@@ -4,7 +4,7 @@ import tkinter as tk
 import os
 window = tk.Tk()
 window.title('SMCL')  # 更改标题名字
-window.geometry('960x540')  
+window.geometry('320x240')  
 window.iconphoto(False, tk.PhotoImage(file='stone.png'))
 window.mainloop()
 if(os.path.exists('./.smcl')==False):
