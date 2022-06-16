@@ -1,10 +1,11 @@
 import os
-basic='./.minecraft'
+
+basic_dir='./.minecraft'
 tasks=["","/assets","/config","/libraries","/logs","/resourcepacks","/saves","/screenshots","/versions"] # 要创建文件夹的列表
 def renew(dir):
-    global basic
-    if(os.path.exists(basic+dir)==False):
-        os.makedirs(basic+dir)
+    global basic_dir
+    if(os.path.exists(basic_dir+dir)==False):
+        os.makedirs(basic_dir+dir)
 count=0
 length = len(tasks)-1
 while True:
