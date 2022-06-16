@@ -5,7 +5,7 @@ import os
 window = tk.Tk()
 window.title('SMCL')  # 更改标题名字
 window.geometry('854x480') #窗口大小
-window.iconphoto(False, tk.PhotoImage(file='stoneicon.png'))
+window.iconphoto(False, tk.PhotoImage(file='stoneicon.png'))#使用icon
 maintitle=tk.Label(text="SMCL 启动器 dev .1",fg="black",font=('Bahnschrift', 16,)).place(x=0,y=0) #画出主标题
 version=tk.Label(text="Dev .1",fg="black",font=('Bahnschrift', 9,)).place(x=0,y=460) #画版本
 
