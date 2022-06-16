@@ -9,3 +9,4 @@ window.iconphoto(False, tk.PhotoImage(file='stone.png'))
 window.mainloop()
 if(os.path.exists('./.smcl')==False):
     os.makedirs('./.smcl')     #创建游戏目录
+
