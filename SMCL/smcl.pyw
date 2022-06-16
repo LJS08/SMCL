@@ -16,3 +16,4 @@ theLabel.pack()
 window.mainloop() #循环绘画
 if(os.path.exists('./.smcl')==False):
     os.makedirs('./.smcl')     #创建游戏目录
+    
