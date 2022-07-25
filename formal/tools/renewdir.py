@@ -11,5 +11,5 @@ while True:
     renew(tasks[count])
     if(count==length):
         break
-    count=count+1;
+    count=count+1
 print("ok")
