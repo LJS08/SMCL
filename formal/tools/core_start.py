@@ -481,7 +481,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		raise CoreBootstrapMainError("暂不支持")
 
 def core_start_IN(java_path, mc_path, G1NewSizePercent_size, G1ReservePercent_size, launcher_name, launcher_version, client_jar_path, username, gameversion, assets_index_path, assets_index_name, uuid_val, aT, launcher_name_self,cph):#java_path以后可以升个级作判断，自己检测Java
-	'''java_path:Java路径（字符串）（可以填写java)
+	'''
+        java_path:Java路径（字符串）（可以填写java)
 		mc_path:游戏目录（到.minecraft）
 		G1NewSizePercent_size:20（字符串）
 		G1ReservePercent_size：20（字符串）
