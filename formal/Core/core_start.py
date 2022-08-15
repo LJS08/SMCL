@@ -630,8 +630,8 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		' --versionType ' + launcher_name_self + \
 		" --width 854" + \
 		" --height 480"
-
-		return temp_2 + temp_3
+		os.system(temp_2 + temp_3)
+		return "ok",temp_2 + temp_3
 
 	elif start_json["mainClass"] == "cpw.mods.modlauncher.Launcher":
 		argument_forge = []  # forge
