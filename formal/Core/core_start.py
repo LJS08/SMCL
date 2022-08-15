@@ -539,8 +539,13 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		start_json = json.loads(data)
 	except FileNotFoundError as e:
 		raise CoreBootstrapMainError("错误, 无法找到描述文件, 请检查您的安装")
+	try:
 
-	pathes_other = start_json["patches"]	# forge
+		pathes_other = start_json["patches"]	# forge
+
+	except KeyError as e:
+		
+		mod_loder = False
 
 	assets_index_name = start_json["assets"]
 
