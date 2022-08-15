@@ -520,7 +520,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 	# assets_index_name:一般为1.12这种形式(被弃用）
 	# uuid_val：uuid(字符串)
 	# aT:accessToken位，用于正版登录。一般随便填（盗版登录）（字符串）
-	# launcher_name_self：启动器名
+	# launcher_name_self：启动器版本
 	# Xmn:最小内存（默认128m）
 	# Xmx:最大分配内存（默认1024M)
 	# cph:此位保留，无用处。不返回。可填None.
