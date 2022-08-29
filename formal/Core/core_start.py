@@ -14,6 +14,7 @@ from selenium.webdriver.chrome.service import Service as CService
 import threading
 import time
 import uuid
+import zipfile
 import webbrowser
 
 
@@ -198,6 +199,8 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 				# function(task)
 			except KeyError as ke:
 				print(ke)
+			except IndexError as IndexE:
+				break
 	for i in range(cores+1):
 		thread = threading.Thread(target=_run)
 		thread.start()
@@ -349,6 +352,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		downloads_artifact_url_inlib_list = []
 		downloads_lib_name = []
 		lib_path = os.path.join(mc_path, "libraries")
+		if run_time_environment == 'nt':
+			natives_path = os.path.join(mc_path, "versions", jar_version, "natives-windows-x86_64")
 		i = 0
 		for item in library_download_list:
 			temp = item["name"]
@@ -368,29 +373,51 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		for item in downloads_things_list:
 			i = i + 1
 			try:
+				print(item)
 				downloads_artifact_inlib_list.append(item["artifact"]["path"])
 				downloads_artifact_url_inlib_list.append(item["artifact"]["url"])
+
+				if run_time_environment == 'nt':
+					try:
+						if item["natives"]["windows"] == "natives-windows":
+							print(1)
+							downloads_natives_sha1_list.append(item["classifiers"]["natives-windows"]["sha1"])
+							downloads_natives_path_list.append(item["classifiers"]["natives-windows"]["path"])
+							downloads_natives_url_list.append(item["classifiers"]["natives-windows"]["url"])
+					except KeyError as KE:
+						print(KE)
+
 			except KeyError as e:
 				try:
 					if run_time_environment == 'nt':
-						downloads_natives_sha1_list.append(item["classifiers"]["natives-windows"]["sha1"])
-						downloads_natives_path_list.append(item["classifiers"]["natives-windows"]["path"])
-						downloads_natives_url_list.append(item["classifiers"]["natives-windows"]["url"])
+						try:
+							if item["natives"]["windows"] == "natives-windows":
+								downloads_natives_sha1_list.append(item["classifiers"]["natives-windows"]["sha1"])
+								downloads_natives_path_list.append(item["classifiers"]["natives-windows"]["path"])
+								downloads_natives_url_list.append(item["classifiers"]["natives-windows"]["url"])
+						except KeyError as KE:
+							print(KE)
+
 					else:
 						downloads_natives_list.append(item["classifiers"])
 				except KeyError as e:
 					raise CoreBootstrapMainError("错误,未定义的数据.In 1.12.2.json. It doesn't have classifiers or the mojang update?")
-
-		print(downloads_artifact_inlib_list)
-		print(downloads_natives_list)		# 此列表被移除但未更改
-		print(downloads_lib_name)
-		#if os.path.exists(os.path.join(lib_path, downloads_artifact_inlib_list[0])):
-			#print(downloads_artifact_inlib_list[0], "OK")	# debug
-		#else:		# 没有这个路径
-			#os.makedirs()
-			#os.chdir(os.path.join(lib_path, "com/mojang/patchy/1.3.9"))
-			#_downloads_file_url(link_downloads_libraries + downloads_artifact_inlib_list[0])
-			#os.chdir(lib_path)
+		
+		for item in library_download_list:
+			if run_time_environment == 'nt':
+				try:
+					if item["natives"]["windows"] == "natives-windows":
+						downloads_natives_sha1_list.append(item["downloads"]["classifiers"]["natives-windows"]["sha1"])
+						downloads_natives_path_list.append(item["downloads"]["classifiers"]["natives-windows"]["path"])
+						downloads_natives_url_list.append(item["downloads"]["classifiers"]["natives-windows"]["url"])
+				except KeyError as KE:
+					print(KE)
+		#print(downloads_artifact_inlib_list)
+		#print(downloads_natives_list)		# 此列表被移除但未更改
+		#print(downloads_lib_name)
+		print(downloads_natives_path_list)
+		print(run_time_environment)
+		# 本来想把lib下载放在这里
 
 		assets_index_path = os.path.join(mc_path, "assets\\indexes\\")    # 拼接index文件夹路径
 		assets_objects_path = os.path.join(mc_path, "assets\\objects\\")
@@ -435,6 +462,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 				f.close()
 			sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
 			hash_yn = 0		# 验证hash是否正确
+			hash_yn_too_many_try = 0
 			while hash_yn == 0:
 				hash_yn_too_many_try = hash_yn_too_many_try + 1
 				if hash_yn_too_many_try >= 10:		# 尝试次数过多就引发这个错误,防止程序一直卡在这
@@ -609,9 +637,72 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					# link_downloads_assets = bmcl_link  # 恢复为原来使用的源
 					bar()
 
-		multprocessing_task(downloads_file_url_list, 4, True)
+		multprocessing_task(downloads_file_url_list, 32, True)
 		os.chdir(running_src)
 		print("资源文件验证完毕")
+		print("正在下载lib文件")
+		# lib文件下载
+		i_2 = 0
+		with alive_bar(len(range(37)), force_tty=True) as bar:
+			for item in downloads_artifact_inlib_list:		# 单个lib文件路径
+				tmp = item.split("/")
+				tmplong = len(tmp)
+				i = 0
+				os.chdir(lib_path)
+				#for items in tmp:		# 创建文件夹并下载
+				for items in tmp:
+					print(items)
+					if ".jar" in items:
+						if os.path.exists(items):
+							pass
+						else:
+							_downloads_file_url(downloads_artifact_url_inlib_list[i_2], items, True)
+					elif os.path.exists(items):
+						os.chdir(items)
+					elif i <= tmplong - 1:
+						os.mkdir(items)
+						os.chdir(items)
+					#i += 1
+				i_2 += 1
+
+				os.chdir(lib_path)
+				bar()
+		# 以上是lib文件下载部分
+		print("lib ok")
+		print(downloads_natives_path_list)
+		i_2 = 0
+		i = 0
+		for item in downloads_natives_path_list:
+			tmp = item.split("/")
+			tmplong = len(tmp)
+			i = 0
+			os.chdir(lib_path)
+			for items in tmp:  # 创建文件夹并下载
+				if os.path.exists(items):
+					print("ok")
+				elif ".jar" in items:
+					_downloads_file_url(downloads_natives_url_list[i_2], items, True)
+					try:
+						with zipfile.ZipFile(items, mode="r") as archive:
+							archive.extractall(natives_path)
+							archive.close()
+					except zipfile.BadZipFile as zBZ:
+						print(zBZ,"解压失败")
+				elif i < tmplong - 1:		# 这里被淘汰
+					os.mkdir(items)
+					os.chdir(items)
+				i += 1
+			i_2 += 1
+
+			os.chdir(lib_path)
+		print("ok")
+
+		log4j2type = start_json["logging"]["client"]["type"]
+		log4j2 = log4j2type.replace("-", ".")
+		log4j2_download_url = start_json["logging"]["client"]["file"]["url"]
+		if not os.path.exists(log4j2):
+			_downloads_file_url(log4j2_download_url, (os.path.join(mc_path, "versions", jar_version, log4j2)), True)
+		print("All Right")
 
 
 	else:
