@@ -215,7 +215,7 @@ class CoreBootstrapMainError(Exception):
 	def __init__(self, message):
 		super().__init__(message)
 
-def _read_json_file(read_json_file_src):
+def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要加载的文件,", PRINT_Things  = None):
 	try:
 		with open(read_json_file_src, mode='r',encoding="gbk") as f:
 			data = f.read(-1)
@@ -224,7 +224,8 @@ def _read_json_file(read_json_file_src):
 		return read_json_file_json
 
 	except FileNotFoundError as e:
-			raise CoreBootstrapMainError("错误: 无法找到需要加载的文件,{}".format(e))
+		print("{}".format(PRINT_Things))
+		raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things,e))
 				
 	except UnicodeDecodeError as UDE:
 		try:
@@ -233,9 +234,11 @@ def _read_json_file(read_json_file_src):
 				read_json_file_json = json.loads(data)
 				f.close()
 		except FileNotFoundError as e:
-			raise CoreBootstrapMainError("错误: 无法找到需要加载的文件,{}".format(e))	# 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
+			print("{}".format(PRINT_Things))
+			raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things,e))	# 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
 
 		except UnicodeDecodeError as UDE:
+			print("{}".format(PRINT_Things))
 			print("编码错误{}".format(UDE))
 
 def _encrypt(fpath: str, algorithm: str) -> str:#https://blog.csdn.net/qq_42951560/article/details/125080544
@@ -346,25 +349,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 
 		print("正在预加载:配置文档")
-		try:
-			with open(os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json", mode='r') as f:
-				data = f.read(-1)
-			start_json = json.loads(data)
-		except FileNotFoundError as e:
-			print("预加载配置文档失败")
-			raise CoreBootstrapMainError("错误, 无法找到描述文件, 请检查您的安装")
-		
-		except UnicodeDecodeError as UDE:
-			try:
-				with open(os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json", mode='r', encoding="gbk") as f:
-					data = f.read(-1)
-				start_json = json.loads(data)
-			except FileNotFoundError as e:
-				print("预加载配置文档失败")
-				raise CoreBootstrapMainError("错误, 无法找到描述文件, 请检查您的安装")
-
-			except UnicodeDecodeError as UDE:
-				print("编码错误{}".format(UDE))
+		start_json = _read_json_file((os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json"), "错误, 无法找到描述文件, 请检查您的安装", "预加载配置文档失败")
+		print("配置加载完毕")
 			
 		# 我早知道就不在这里用单独的部分了。。。
 
@@ -1167,3 +1153,5 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return "ok", temp_2 + temp_3
 		else:
 			return "ok", temp_2 + temp_3, launcher_uuid
+
+
