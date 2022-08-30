@@ -454,6 +454,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			else:
 				hash_yn = 0		# 重复了没有1.12.json的操作中的验证hash步骤
 				hash_yn_too_many_try = 0
+				sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')
 				while hash_yn == 0:
 					hash_yn_too_many_try = hash_yn_too_many_try + 1
 					if hash_yn_too_many_try >= 10:
@@ -1153,5 +1154,6 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return "ok", temp_2 + temp_3
 		else:
 			return "ok", temp_2 + temp_3, launcher_uuid
+
 
 
