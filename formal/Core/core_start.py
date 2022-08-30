@@ -210,11 +210,14 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 			thread.join()
 
 def _read_json_file(read_json_file_src):
-	with open(read_json_file_src, mode='r') as f:
-		data = f.read(-1)
-		read_json_file_json = json.loads(data)
-		f.close()
-	return read_json_file_json
+	try:
+		with open(read_json_file_src, mode='r',encoding="utf-8") as f:
+			data = f.read(-1)
+			read_json_file_json = json.loads(data)
+			f.close()
+	except UnicodeDecodeError as UDE:
+		print("编码错误{}".format(UDE))
+		return read_json_file_json
 
 
 class CoreBootstrapMainError(Exception):
@@ -331,7 +334,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 		print("正在预加载:配置文档")
 		try:
-			with open(os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json", mode='r') as f:
+			with open(os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json", mode='r', encoding="utf-8") as f:
 				data = f.read(-1)
 			start_json = json.loads(data)
 		except FileNotFoundError as e:
