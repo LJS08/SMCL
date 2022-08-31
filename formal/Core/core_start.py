@@ -22,6 +22,10 @@ import webbrowser
 
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
 
+class _CheckVersionError(Exception):
+	def __init__(self, message):
+		super().__init__(message)
+
 def _Check_versions_in(CV_version_name):
 	i = 0
 	'''此函数用来分解版本字符串,内部版本'''
@@ -39,7 +43,7 @@ def _Check_versions_in(CV_version_name):
 	if i <= 2:
 		version_name_split.append(0)
 	elif i > 3:
-		raise _UpdateMainError("版本过高,无法分解。请检查您的版本号是否超过3位")
+		raise _CheckVersionError("版本字符串过高,无法分解。请检查您的版本号是否超过3位")
 	frist_num = int(version_name_split[0])*999*999		# 1.0.0 = 0.999.999+1 = 1.0.0
 	nd_2_num = int(version_name_split[1])*999
 	rd_3_num = int(version_name_split[2])
@@ -1216,6 +1220,3 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return return_IN_list.append("ok", temp_2 + temp_3)
 		else:
 			return return_IN_list.append("ok", temp_2 + temp_3, launcher_uuid)
-
-
-
