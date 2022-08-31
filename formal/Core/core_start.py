@@ -3,10 +3,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
 import hashlib
 import json
+import logging
 import loguru
 import multiprocessing
 import os
 import requests
+import sqlite3
 import sys
 import selenium
 from selenium import webdriver
@@ -20,6 +22,30 @@ import webbrowser
 
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
 
+def _Check_versions_in(CV_version_name):
+	i = 0
+	'''此函数用来分解版本字符串,内部版本'''
+
+	# 看起来是不是很熟悉?其实这个是从Update_Main.py直接copy来的
+
+	version_name_split = []
+	version_name_split = CV_version_name.split(".")
+	MAX_VERSION = 999
+	LOW_VERSION = 0
+	print(version_name_split)
+	for item in version_name_split:
+		i += 1
+	print(i)
+	if i <= 2:
+		version_name_split.append(0)
+	elif i > 3:
+		raise _UpdateMainError("版本过高,无法分解。请检查您的版本号是否超过3位")
+	frist_num = int(version_name_split[0])*999*999		# 1.0.0 = 0.999.999+1 = 1.0.0
+	nd_2_num = int(version_name_split[1])*999
+	rd_3_num = int(version_name_split[2])
+	CV_version_num = frist_num+nd_2_num+rd_3_num
+	print(CV_version_num)
+	return CV_version_num
 
 def calc_divisional_range(filesize, chuck=10):
 	step = filesize // chuck
@@ -759,7 +785,7 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			try:
 				back_url_code_place = back_url.find("code=")
 				back_url_code_place_end = back_url.find("&")
-				back_url = back_url[back_url_code_place+5:back_url_code_place_end-1]
+				back_url = back_url[back_url_code_place+5:back_url_code_place_end]
 			except AttributeError as eab:
 
 				if eab == "'int' object has no attribute 'replace'":
@@ -930,31 +956,31 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 
 def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn = False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
 	'''
-		java_path:Java路径（字符串）（可以填写java)
+		java_path:Java路径(字符串)(可以填写java)
 
-		mc_path:游戏目录（到.minecraft）
+		mc_path:游戏目录（到.minecraft)
 
-		launcher_name：需要启动的游戏版本（字符串）
+		launcher_name:需要启动的游戏版本(字符串)
 
 		username:玩家名（字符串）
 
-		uuid_val：uuid(字符串)
+		uuid_val:uuid(字符串)
 
-		aT:accessToken位，用于正版登录。一般随便填（盗版登录）（字符串）
+		aT:accessToken位,用于正版登录。一般随便填（盗版登录）（字符串）
 
-		launcher_name_version：启动器版本
+		launcher_name_version:启动器版本
 
-		uuid_yn:是否有（需要生成）uuid(默认为False需要生成）（可不填（需要生成））（bool）
+		uuid_yn:是否有(需要生成)uuid(默认为False需要生成)(可不填(需要生成))(bool)
 
-		G1NewSizePercent_size:20（字符串）
+		G1NewSizePercent_size:20(字符串)
 
-		G1ReservePercent_size：20（字符串）
+		G1ReservePercent_size:20(字符串)
 
-		Xmn:最小内存（默认128m）
+		Xmn:最小内存(默认128m)
 
-		Xmx:最大分配内存（默认1024M)
+		Xmx:最大分配内存(默认1024M)
 
-		cph:此位保留，无用处。不返回。可填None.
+		cph:此位保留,无用处。不返回。可填None.
 	'''
 
 	# java_path:Java路径（字符串）（可以填写java)
@@ -1075,24 +1101,47 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		launcher_uuid = launcher_uuid_uuid.hex
 		uuid_val = launcher_uuid
 	if start_json["mainClass"] == "net.minecraft.client.main.Main":
-		for downloads_artifact_inlib in downloads_artifact_inlib_list:
-			temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
-		print(downloads_artifact_inlib)
-		the_temp = "\\"
-		temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.client.main.Main" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 " --assetsDir " + assets_index_path + \
-				 " --assetIndex " + assets_index_name + \
-				 " --uuid " + uuid_val + \
-				 " --accessToken " + aT + \
-				 " --userType Legacy" + \
-				 ' --versionType ' + launcher_name_self + \
-				 " --width 854" + \
-				 " --height 480"
-		os.system(temp_2 + temp_3)
-		if uuid_yn:
-			return "ok", temp_2 + temp_3
+
+		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):		# 这是低于1.8.0的解决方案
+			for downloads_artifact_inlib in downloads_artifact_inlib_list:
+				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
+			print(downloads_artifact_inlib)
+			the_temp = "\\"
+			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.client.main.Main" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+				 	" --assetsDir " + assets_index_path + \
+					" --assetIndex " + assets_index_name + \
+					" --uuid " + uuid_val + \
+					" --accessToken " + aT + \
+					" --userProperties {}" + \
+					" --userType Legacy" + \
+					' --versionType ' + launcher_name_self + \
+					" --width 854" + \
+					" --height 480"
+			os.system(temp_2 + temp_3)
+			if uuid_yn:
+				return "ok", temp_2 + temp_3
+			else:
+				return "ok", temp_2 + temp_3, launcher_uuid
+
 		else:
-			return "ok", temp_2 + temp_3, launcher_uuid
+			for downloads_artifact_inlib in downloads_artifact_inlib_list:
+				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
+			print(downloads_artifact_inlib)
+			the_temp = "\\"
+			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.client.main.Main" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+				 	" --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userType Legacy" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
+			os.system(temp_2 + temp_3)
+			if uuid_yn:
+				return "ok", temp_2 + temp_3
+			else:
+				return "ok", temp_2 + temp_3, launcher_uuid
 
 	elif start_json["mainClass"] == "cpw.mods.modlauncher.Launcher":
 		argument_forge = []  # forge
@@ -1121,15 +1170,27 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		for item in forge["arguments"]["jvm"]:
 			temp_3_t = temp_3_t + " " + item
 
-		temp_3 = temp_3_t + " cpw.mods.modlauncher.Launcher" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 " --assetsDir " + assets_index_path + \
-				 " --assetIndex " + assets_index_name + \
-				 " --uuid " + uuid_val + \
-				 " --accessToken " + aT + \
-				 " --userType Legacy" + \
-				 ' --versionType ' + launcher_name_self + \
-				 " --width 854" + \
-				 " --height 480"
+		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):		# 这是低于1.8.0的解决方案
+			temp_3 = temp_3_t + " cpw.mods.modlauncher.Launcher" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+				 	" --assetsDir " + assets_index_path + \
+				 	" --assetIndex " + assets_index_name + \
+				 	" --uuid " + uuid_val + \
+				 	" --accessToken " + aT + \
+					" --userProperties {}" + \
+				 	" --userType Legacy" + \
+				 	' --versionType ' + launcher_name_self + \
+				 	" --width 854" + \
+				 	" --height 480"
+		else:
+			temp_3 = temp_3_t + " cpw.mods.modlauncher.Launcher" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+				 	" --assetsDir " + assets_index_path + \
+				 	" --assetIndex " + assets_index_name + \
+				 	" --uuid " + uuid_val + \
+				 	" --accessToken " + aT + \
+				 	" --userType Legacy" + \
+				 	' --versionType ' + launcher_name_self + \
+				 	" --width 854" + \
+				 	" --height 480"
 
 		item_i = 0  # forge
 
@@ -1151,9 +1212,10 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 				break
 
 		if uuid_yn:
-			return "ok", temp_2 + temp_3
+			return_IN_list = []
+			return return_IN_list.append("ok", temp_2 + temp_3)
 		else:
-			return "ok", temp_2 + temp_3, launcher_uuid
+			return return_IN_list.append("ok", temp_2 + temp_3, launcher_uuid)
 
 
 
