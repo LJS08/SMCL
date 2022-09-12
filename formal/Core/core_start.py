@@ -4,7 +4,7 @@ from email.message import EmailMessage
 import hashlib
 import json
 import logging
-import loguru
+from loguru import logger
 import multiprocessing
 import os
 import requests
@@ -19,7 +19,7 @@ import uuid
 import zipfile
 import webbrowser
 
-
+logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
 
 class _CheckVersionError(Exception):
@@ -290,7 +290,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 	global link_downloads_launcher
 	if link_type == "mojang" or link_type is None:		#使用mojang api
-
+		logger.warning("using Mojang api")
 		link_downloads_version_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
 		link_downloads_launchermeta = "https://launchermeta.mojang.com/"
@@ -305,7 +305,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_maven = "https://maven.fabricmc.net"
 
 	elif link_type == "BMCLAPI":		# 使用BMCLAPI
-
+		logger.info("using BMCLAPI")
 		link_downloads_version_manifest = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json"
 		link_downloads_launchermeta = "https://bmclapi2.bangbang93.com/"
@@ -320,9 +320,11 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_maven = "https://bmclapi2.bangbang93.com/maven"
 
 	elif link_type == "MCBBS":		# 使用MCBBS api
+		logger.error("using MCBBS api ,there is nothing.")
 		pass
 
 	else:		# 如果都不是就用mojang(重复？)
+		logger.warning("using Mojang api")
 		link_downloads_version_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
 		link_downloads_launchermeta = "https://launchermeta.mojang.com/"
@@ -343,17 +345,25 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 		if os.path.isdir(os.path.join(mc_path, "versions", jar_version)):
 			print("客户端目录：存在")
+			logger.info("客户端目录：存在{}".format(os.path.join(mc_path, "versions", jar_version)))
 		else:
 			print("客户端目录:不存在")
+			logger.info("客户端目录:不存在{}".format(os.path.join(mc_path, "versions", jar_version)))
 			print("正在创建")
+			logger.info("正在创建:{}".format(os.path.join(mc_path, "versions", jar_version)))
 			os.chdir(os.path.join(mc_path, "versions"))
+			logger.debug("移动到:{}".format(os.path.join(mc_path, "versions")))
 			os.mkdir(jar_version)
+			logger.debug("创建文件夹:{}".format(jar_version))
 			os.chdir(running_src)		# 返回工作目录
+			logger.debug("返回工作目录:{}".format(running_src))
 
 		if os.path.isfile(os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar"):
 			print("主游戏文件:存在")
+			logger.info("主游戏文件:存在,{}".format((os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar")))
 		else:
 			print("主游戏文件:不存在")
+			logger.info("主游戏文件:不存在,{}".format((os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar")))
 			print("正在下载,这可能需要一段时间")
 			with alive_bar(len(range(100)), force_tty=True) as bar:	#这里没卵用，主要是因为没开异步
 				for item in range(50):  # 遍历任务
@@ -793,18 +803,23 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			except AttributeError as eab:
 
 				if eab == "'int' object has no attribute 'replace'":
+					logger.error(("back_url不应该是int类型,应该是str", eab))
 					raise CoreStartLoginError(("back_url不应该是int类型,应该是str", eab))
 
 				elif eab == "'float' object has no attribute 'replace'":
+					logger.error(("back_url不应该是float类型,应该是str", eab))
 					raise CoreStartLoginError(("back_url不应该是float类型,应该是str", eab))
 
 				elif eab == "'NoneType' object has no attribute 'replace'":
+					logger.error(("back_url不应该是NoneType类型,应该是str", eab))
 					raise CoreStartLoginError(("back_url不应该是NoneType类型,应该是str", eab))
 
+				logger.error(("未知错误", eab))
 				raise CoreStartLoginError(eab)
 			if "M.R3_BAY" in back_url:
-				pass
+				logger.info("OAuth code提取成功")
 			else:
+				logger.error("无法提取到OAuth code")
 				raise CoreStartLoginError("无法提取到OAuth code")
 
 			MS_head = {
@@ -845,6 +860,7 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 					print("验证过期")		# 过期了
 					raise CoreStartLoginError("无法通过Microsoft OAuth,验证过期.请重新进行登录操作")
 				else:
+					logger.error("无法通过Microsoft OAuth "+post_json_ms_token_back_json["error_description"])
 					raise CoreStartLoginError("无法通过Microsoft OAuth\n"+post_json_ms_token_back_json["error_description"])
 					# 不知道哪里错了,抛出错误
 			except KeyError as KE:
@@ -957,6 +973,7 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			post_json = 9
 			r = requests.post(mojang_Yggdrasil + "/authenticate", data=post_json, headers=header)
 		# print(r.text)
+
 
 def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn = False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
 	'''
@@ -1220,3 +1237,6 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return return_IN_list.append("ok", temp_2 + temp_3)
 		else:
 			return return_IN_list.append("ok", temp_2 + temp_3, launcher_uuid)
+
+
+core_start_Login(None, None, True, True, "M.R3_BAY")
