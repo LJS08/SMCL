@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.messagebox
 import Download
-import Launch
+import Core.core_start as Launch
 import logging
 import os
 import wx
