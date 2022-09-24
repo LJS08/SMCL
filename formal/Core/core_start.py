@@ -1,3 +1,4 @@
+# Copyright © 2022 LJS80 All Rights Reserved
 from alive_progress import alive_bar
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
