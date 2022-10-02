@@ -1285,20 +1285,27 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			else:
 				return "ok", temp_2 + temp_3, launcher_uuid
 
-def core_Get_Version_list(list_type, link_type, SVONLY = None):
-    """
+
+def core_Get_Version_list(list_type, link_type, SVONLY=None):
+	"""
 list_type: The type of Minecraft
 link_type: BMCLAPI or mojang?
 SVONLY: You don't need to care about it.It's useless to you.
     """
 
-    release_list = []
-    if link_type == "BMCLAPI":
-        link_get_version_list = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
-    else:
-        pass
-    
-    r = requests.get(link_get_version_list)
-    version_json_v1 = r.json()
+	release_list = []
+	if link_type == "BMCLAPI":
+		link_get_version_list = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+	else:
+		pass
+
+	r = requests.get(link_get_version_list)
+	version_json_v1 = r.json()
+
+	if list_type == "LTS" or list_type == "release":
+		for items in version_json_v1["versions"]:
+			if not items["type"] == "snapshot":
+				release_list.append(items)
+		return release_list
 
 print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.0", "LJS80", "NONE", "NANE", "1.0", True))
