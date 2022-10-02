@@ -1,3 +1,4 @@
+# Copyright © 2022 LJS80 All Rights Reserved
 from alive_progress import alive_bar
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
@@ -1121,10 +1122,6 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		launcher_uuid_uuid = uuid.uuid4()
 		launcher_uuid = launcher_uuid_uuid.hex
 		uuid_val = launcher_uuid
-
-	global forge_things_g
-	forge_things_g = None
-
 	if start_json["mainClass"] == "net.minecraft.client.main.Main":
 
 		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):		# 这是低于1.8.0的解决方案
@@ -1240,50 +1237,28 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return_IN_list = []
 			return return_IN_list.append("ok", temp_2 + temp_3)
 		else:
-			return_IN_list = []
 			return return_IN_list.append("ok", temp_2 + temp_3, launcher_uuid)
 
-	elif start_json["mainClass"] == "net.minecraft.launchwrapper.Launch":
-		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
-			for downloads_artifact_inlib in downloads_artifact_inlib_list:
-				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
-			print(downloads_artifact_inlib)
-			the_temp = "\\"
-			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.launchwrapper.Launch" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-					 " --assetsDir " + assets_index_path + \
-					 " --assetIndex " + assets_index_name + \
-					 " --uuid " + uuid_val + \
-					 " --accessToken " + aT + \
-					 " --userProperties {}" + \
-					 " --userType Legacy" + \
-					 ' --versionType ' + launcher_name_self + \
-					 " --width 854" + \
-					 " --height 480"
-			os.system(temp_2 + temp_3)
-			if uuid_yn:
-				return "ok", temp_2 + temp_3
-			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
 
-		else:
-			for downloads_artifact_inlib in downloads_artifact_inlib_list:
-				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
-			print(downloads_artifact_inlib)
-			the_temp = "\\"
-			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.launchwrapper.Launch" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-					 " --assetsDir " + assets_index_path + \
-					 " --assetIndex " + assets_index_name + \
-					 " --uuid " + uuid_val + \
-					 " --accessToken " + aT + \
-					 " --userType Legacy" + \
-					 ' --versionType ' + launcher_name_self + \
-					 " --width 854" + \
-					 " --height 480"
-			os.system(temp_2 + temp_3)
-			if uuid_yn:
-				return "ok", temp_2 + temp_3
-			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+def core_Get_Version_list(list_type, link_type, SVONLY = None):
+    """
+list_type: The type of Minecraft
+link_type: BMCLAPI or mojang?
+SVONLY: You don't need to care about it.It's useless to you.
+    """
+
+    release_list = []
+    if link_type == "BMCLAPI":
+        link_get_version_list = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+    else:
+        pass
+    
+    r = requests.get(link_get_version_list)
+    version_json_v1 = r.json()
 
 
-print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.0", "LJS80", "NONE", "NANE", "1.0", True))
+    if list_type == "LTS" or list_type == "release":
+        for items in version_json_v1["versions"]:
+            if not items["type"] == "snapshot":
+                release_list.append(items)
+        return release_list
