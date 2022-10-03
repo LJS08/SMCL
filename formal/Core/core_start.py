@@ -1307,3 +1307,10 @@ SVONLY: You don't need to care about it.It's useless to you.
 			if not items["type"] == "snapshot":
 				release_list.append(items)
 		return release_list
+
+def core_mcserver(server_version, server_type):
+	'''
+	server_version:服务端版本
+	server_type：服务端类型(MCOJE/paper/Forge/spigot/sponge/spongeFore)
+	'''
+	pass
