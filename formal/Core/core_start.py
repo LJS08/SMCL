@@ -1307,5 +1307,3 @@ SVONLY: You don't need to care about it.It's useless to you.
 			if not items["type"] == "snapshot":
 				release_list.append(items)
 		return release_list
-
-print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.0", "LJS80", "NONE", "NANE", "1.0", True))
