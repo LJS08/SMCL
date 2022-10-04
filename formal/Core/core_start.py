@@ -1310,11 +1310,72 @@ SVONLY: You don't need to care about it.It's useless to you.
 
 
 def core_mcserver(server_version, server_type):
-	'''
+	"""
 	server_version:服务端版本
 	server_type：服务端类型(Vanilla/paper/Forge/spigot/sponge/spongeFore)
-	'''
+	"""
 	pass
 
-def core_Forge_install_clint():
-	pass
+
+class CoreForgeInstallError(Exception):
+	def __init__(self, message):
+		super().__init__(message)
+
+
+def core_Forge_install_clint_version_Get(version=None, type="All"):
+	"""
+	此函数用来获取可用版本列表
+	如果什么也不填就返回可使用Forge的Minecraft版本
+	只输入某个版本（version）返回此版本的所有build号和所有可用版本号
+	输入某个版本（version）和某个模式（type)可获取对应模式的返回。如，type=All时返回此版本Forge的所有build号和所有可用版本号
+	type=build时返回此版本的所有build号
+	type=versions时返回此版本Forge所有可用版本号
+	如果version不填或为None那么返回支持Forge的列表
+	"""
+	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
+	rt = r.json()
+
+	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version))
+	Forge_version_list = r_Forge_version_list.json()
+	forge_build_list = []
+	forge_versions_list = []
+	for item in Forge_version_list:
+		forge_build_list.append(item["build"])  # 将build版本号添加到列表
+		forge_versions_list.append(item["version"])  # 将版本号添加到列表
+	if version is None:
+		return rt		# 返回受Forge支持的Minecraft版本列表
+
+	if version in rt:
+		if type == "All" or type == "all" or type == "ALL":		# 这里最规范的用法应该是All其次是all
+			return forge_build_list, forge_versions_list
+		elif type == "build":
+			return forge_build_list
+		elif type == "versions":
+			return forge_versions_list
+
+
+def core_Forge_install_clint(version_game, version_forge):
+	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
+	rt = r.json()
+	logger.debug("version={}".format(version_game))
+	if version_game == "":
+		logger.critical("version变量不合法,他不应该为空")
+		CoreForgeInstallError("version变量不合法,他不应该为空")
+	if version_game not in rt:
+		logger.critical("{}版本不支持Forge,无法下载".format(version_game))
+		CoreForgeInstallError("此版本不支持Forge!")
+
+	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game))
+	Forge_version_list = r_Forge_version_list.json()
+	forge_build_list = []
+	forge_versions_list = []
+	for item in Forge_version_list:
+		forge_build_list.append(item["build"])		# 将build版本号添加到列表
+		forge_versions_list.append(item["version"])		# 将版本号添加到列表
+
+	print(forge_versions_list)
+	print(forge_build_list)
+
+
+print(core_Forge_install_clint_version_Get("1.16.5", "All"))
+#core_Forge_install_clint("1.16.5")
