@@ -1334,7 +1334,7 @@ def core_mcserver(server_version, server_type = None):
 		logger.critical("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
 		CoreMcserverInitializationError("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
 
-	if not os.path.exists(os.path.join("C:\\Users\\", user_name, "", ".minecraftserver"):
+	if not os.path.exists(os.path.join("C:\\Users\\", user_name, "", ".minecraftserver")):
 		os.chdir(os.environ.get["appdata"])
 	if server_type == "Vanilla" or server_type is None:
 		_downloads_file_url()
@@ -1461,7 +1461,4 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 	print(forge_versions_list)
 	print(forge_build_list)
 
-# print(core_Forge_install_clint_version_Get("1.16.5", "build"))
-#core_Forge_install_clint("1.16.5", "D:\\HMCL\\.minecraft", False, "latest")
-# print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.16.5" ,"LJS80", "TST1", "AT", "1", True))
-core_mcserver("1.16.5")
+
