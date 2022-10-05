@@ -1374,8 +1374,12 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 		logger.critical("{}版本不支持Forge,无法下载".format(version_game))
 		CoreForgeInstallError("此版本不支持Forge!")
 
+	const.RUNNING_PATH = os.getcwd()
 	const.GAME_PATH = os.path.join(mc_path, 'versions', version_game)
+	const.FORGE_INSTALL_HEADLESS_PATH = "C:\\Users\\XMX\\PycharmProjects\\smcl\\formal\\Core\\forge-installer-headless.jar"
 	game_path = const.GAME_PATH		# 指向const.GAME_PATH的指针(伪)
+	forge_install_headless_path = const.FORGE_INSTALL_HEADLESS_PATH		# 指向const.FORGE_INSTALL_HEADLESS_PATH的指针(伪)
+	running_path = const.RUNNING_PATH		# 指向const.RUNNING_PATH的指针(伪)
 
 	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game))
 	Forge_version_list = r_Forge_version_list.json()
@@ -1387,12 +1391,17 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 		forge_versions_list.append(item["version"])		# 将版本号添加到列表
 
 	if version_forge == "latest":
+		# for items in forge_versions_list:
+		# print(_Check_versions_in(items)) 本来想用这个的,但一想下面这个方法更简洁
+
 		for item in Forge_version_list:
 			if item["build"] == max(forge_build_list):
 				forge_downloads_clint_install = item["files"]
+				forge_downloads_clint_install_version = item["version"]
 
 				logger.debug("latest-jar:{}".format(forge_downloads_clint_install))		# log记录jar json
-				logger.debug("latest-build-num:{}".format(max(forge_build_list)))		# log记录build数
+				logger.debug("latest-build-num:{}".format(max(forge_build_list)))		# log记录build
+				logger.debug("latest-jar-version:{}".format(item["version"]))
 
 		for items in forge_downloads_clint_install:
 			if items["format"] == "jar":
@@ -1406,8 +1415,30 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 		if not VT_bit:
 
-			_downloads_file_url("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)), (os.path.join(mc_path, "forge-{0}-{1}-installer.jar".format(version_game, max(forge_build_list)))), True)
+			os.chdir(game_path)
+			if not os.path.exists("forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)):
+				os.chdir(running_path)
+				logger.debug("forge安装包名为:forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))
 
+				_downloads_file_url("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)), (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), True)
+
+				logger.debug("forge安装目录为:{}".format((os.path.join(mc_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)))))
+			else:
+				logger.info("已检测到forge安装包，正在验证是否可用")
+				if _hash_get_val(("forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)), "sha1") == forge_downloads_clint_install_hash:
+					logger.info("此安装包可用")
+					os.chdir(running_path)
+				else:
+					xhkz = True
+					while xhkz:
+						logger.info("此安装包不可用,正在尝试重新下载")
+						_downloads_file_url("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)), (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), True)
+						if _hash_get_val(("forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)), "sha1") == forge_downloads_clint_install_hash:
+							logger.info("重新下载完毕")
+							os.chdir(running_path)
+							xhkz = False
+
+				os.system('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
 		else:
 			core_Forge_install_clint("暂不支持版本隔离模式")
 
@@ -1415,8 +1446,3 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 	print(forge_versions_list)
 	print(forge_build_list)
-
-
-#print(core_Forge_install_clint_version_Get("1.16.5", "build"))
-core_Forge_install_clint("1.16.5", "D:\\HMCL\\.minecraft", False, "latest")
-#print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.16.5" ,"LJS80", "TST1", "AT", "1", True))
