@@ -1318,12 +1318,26 @@ SVONLY: You don't need to care about it.It's useless to you.
 		return release_list
 
 
-def core_mcserver(server_version, server_type):
+class CoreMcserverInitializationError(Exception):
+	def __init__(self, message):
+		super().__init__(message)
+
+def core_mcserver(server_version, server_type = None):
 	"""
 	server_version:服务端版本
 	server_type：服务端类型(Vanilla/paper/Forge/spigot/sponge/spongeFore)
 	"""
-	pass
+	const.USER_NAME = os.getlogin()
+	user_name = const.USER_NAME
+	if not os.name == "nt":
+
+		logger.critical("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
+		CoreMcserverInitializationError("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
+
+	if not os.path.exists(os.path.join("C:\\Users\\", user_name, "", ".minecraftserver"):
+		os.chdir(os.environ.get["appdata"])
+	if server_type == "Vanilla" or server_type is None:
+		_downloads_file_url()
 
 
 class CoreForgeInstallError(Exception):
@@ -1446,3 +1460,8 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 	print(forge_versions_list)
 	print(forge_build_list)
+
+# print(core_Forge_install_clint_version_Get("1.16.5", "build"))
+#core_Forge_install_clint("1.16.5", "D:\\HMCL\\.minecraft", False, "latest")
+# print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.16.5" ,"LJS80", "TST1", "AT", "1", True))
+core_mcserver("1.16.5")
