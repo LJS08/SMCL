@@ -1,4 +1,5 @@
 from alive_progress import alive_bar
+import constant as const		# 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
 import hashlib
@@ -1061,7 +1062,10 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 	i = 0
 	for item in library_download_list:
 		i = i + 1
-		downloads_things_list.append(item["downloads"])
+		try:
+			downloads_things_list.append(item["downloads"])
+		except KeyError as e:
+			pass
 
 	# for item in downloads_things_list:
 	# i = i + 1
@@ -1238,10 +1242,15 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 
 		if uuid_yn:
 			return_IN_list = []
-			return return_IN_list.append("ok", temp_2 + temp_3)
+			return_IN_list.append("ok")
+			return_IN_list.append((temp_2 + temp_3))
+			return return_IN_list
 		else:
 			return_IN_list = []
-			return return_IN_list.append("ok", temp_2 + temp_3, launcher_uuid)
+			return_IN_list.append("ok")
+			return_IN_list.append((temp_2 + temp_3))
+			return_IN_list.append(launcher_uuid)
+			return return_IN_list
 
 	elif start_json["mainClass"] == "net.minecraft.launchwrapper.Launch":
 		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
@@ -1354,7 +1363,7 @@ def core_Forge_install_clint_version_Get(version=None, type="All"):
 			return forge_versions_list
 
 
-def core_Forge_install_clint(version_game, version_forge):
+def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
 	rt = r.json()
 	logger.debug("version={}".format(version_game))
@@ -1365,17 +1374,49 @@ def core_Forge_install_clint(version_game, version_forge):
 		logger.critical("{}版本不支持Forge,无法下载".format(version_game))
 		CoreForgeInstallError("此版本不支持Forge!")
 
+	const.GAME_PATH = os.path.join(mc_path, 'versions', version_game)
+	game_path = const.GAME_PATH		# 指向const.GAME_PATH的指针(伪)
+
 	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game))
 	Forge_version_list = r_Forge_version_list.json()
+	print(Forge_version_list)
 	forge_build_list = []
 	forge_versions_list = []
 	for item in Forge_version_list:
 		forge_build_list.append(item["build"])		# 将build版本号添加到列表
 		forge_versions_list.append(item["version"])		# 将版本号添加到列表
 
+	if version_forge == "latest":
+		for item in Forge_version_list:
+			if item["build"] == max(forge_build_list):
+				forge_downloads_clint_install = item["files"]
+
+				logger.debug("latest-jar:{}".format(forge_downloads_clint_install))		# log记录jar json
+				logger.debug("latest-build-num:{}".format(max(forge_build_list)))		# log记录build数
+
+		for items in forge_downloads_clint_install:
+			if items["format"] == "jar":
+				forge_downloads_clint_install_hash = items["hash"]
+
+				logger.debug("latest-jar-hash:{}".format(forge_downloads_clint_install_hash))		# log记录jar hash值
+
+		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))		# log记录跳转链接获取链接
+
+		r = requests.get("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))
+
+		if not VT_bit:
+
+			_downloads_file_url("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)), (os.path.join(mc_path, "forge-{0}-{1}-installer.jar".format(version_game, max(forge_build_list)))), True)
+
+		else:
+			core_Forge_install_clint("暂不支持版本隔离模式")
+
+
+
 	print(forge_versions_list)
 	print(forge_build_list)
 
 
-print(core_Forge_install_clint_version_Get("1.16.5", "All"))
-#core_Forge_install_clint("1.16.5")
+#print(core_Forge_install_clint_version_Get("1.16.5", "build"))
+core_Forge_install_clint("1.16.5", "D:\\HMCL\\.minecraft", False, "latest")
+#print(core_start_IN("java", "D:\\HMCL\\.minecraft","1.16.5" ,"LJS80", "TST1", "AT", "1", True))
