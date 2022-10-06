@@ -1300,7 +1300,7 @@ def core_Get_Version_list(list_type, link_type, SVONLY=None):
 list_type: The type of Minecraft
 link_type: BMCLAPI or mojang?
 SVONLY: You don't need to care about it.It's useless to you.
-    """
+	"""
 
 	release_list = []
 	if link_type == "BMCLAPI":
@@ -1313,7 +1313,7 @@ SVONLY: You don't need to care about it.It's useless to you.
 
 	if list_type == "LTS" or list_type == "release":
 		for items in version_json_v1["versions"]:
-			if not items["type"] == "snapshot":
+			if not items["type"] == "snapshot" and not items["type"] == "old_beta" and not items["type"] == "old_alpha":
 				release_list.append(items)
 		return release_list
 
@@ -1460,5 +1460,6 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 	print(forge_versions_list)
 	print(forge_build_list)
+
 
 
