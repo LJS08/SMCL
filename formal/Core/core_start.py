@@ -1,5 +1,5 @@
 from alive_progress import alive_bar
-import constant as const		# 常量定义用
+import constant as const  # 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.message import EmailMessage
 import hashlib
@@ -19,13 +19,20 @@ import time
 import uuid
 import zipfile
 import webbrowser
+import importlib
+import webbrowser
+import winreg
+
 
 logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
+
+
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
 
 class _CheckVersionError(Exception):
 	def __init__(self, message):
 		super().__init__(message)
+
 
 def _Check_versions_in(CV_version_name):
 	i = 0
@@ -45,14 +52,16 @@ def _Check_versions_in(CV_version_name):
 		version_name_split.append(0)
 	elif i > 3:
 		raise _CheckVersionError("版本字符串过高,无法分解。请检查您的版本号是否超过3位")
-	frist_num = int(version_name_split[0])*999*999		# 1.0.0 = 0.999.999+1 = 1.0.0
-	nd_2_num = int(version_name_split[1])*999
+	frist_num = int(version_name_split[0]) * 999 * 999  # 1.0.0 = 0.999.999+1 = 1.0.0
+	nd_2_num = int(version_name_split[1]) * 999
 	rd_3_num = int(version_name_split[2])
-	CV_version_num = frist_num+nd_2_num+rd_3_num
+	CV_version_num = frist_num + nd_2_num + rd_3_num
 	print(CV_version_num)
 	return CV_version_num
 
+
 def calc_divisional_range(filesize, chuck=10):
+	# 被弃用
 	step = filesize // chuck
 	arr = list(range(0, filesize, step))
 	result = []
@@ -62,10 +71,12 @@ def calc_divisional_range(filesize, chuck=10):
 	result[-1][-1] = filesize - 1
 	return result
 
+
 # 下载方法
 
 
 def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
+	# 被弃用
 	headers = {"Range": f"bytes={s_pos}-{e_pos}"}
 	res = requests.get(url, headers=headers, stream=True)
 	try:
@@ -101,6 +112,7 @@ def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
 		# 等待所有任务执行完毕
 		as_completed(futures)
 
+
 def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件。多线程下载（新）"""
 	# 老版单线程改名为_downloads_file_urls,传参不变
@@ -114,7 +126,8 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 		# 传递头，表明分段下载
 		with requests.get(file_url, stream=True, headers=headers) as downloads_file_url_response:
 			pos = start  # 文件指针就等于（pos）开始（start)
-			for i in downloads_file_url_response.iter_content(chunk_size=1024, decode_unicode=True):  # 设置每次传输的大小r.content.decode(r.apparent_encoding)
+			for i in downloads_file_url_response.iter_content(chunk_size=1024,
+															  decode_unicode=True):  # 设置每次传输的大小r.content.decode(r.apparent_encoding)
 				if i:  # 判断是否为空数据
 					# decoded_i = i.decode('utf-8')	 # 将i转码（没用到）
 					try:
@@ -135,30 +148,33 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 
 				pos = pos + 1024  # 自增
 		e.set()
-	with requests.get(file_url, stream=True) as r2:		# 开启流式下载
-		thread_num = multiprocessing.cpu_count() * 4	 # 线程数量
+
+	with requests.get(file_url, stream=True) as r2:  # 开启流式下载
+		thread_num = multiprocessing.cpu_count() * 4  # 线程数量
 		size = int(r2.headers['Content-Length'])
 		print(r2.headers['Content-Length'])
 		global threads_downloads_file_url
 		threads_downloads_file_url = []  # 记录线程号
 		for i in range(thread_num):
 			if i == thread_num - 1:
-				t1 = threading.Thread(target=_downloads_help_things, args=(i * (size // thread_num), size, file_url, downloads_file_url_src, mkfile))
+				t1 = threading.Thread(target=_downloads_help_things,
+									  args=(i * (size // thread_num), size, file_url, downloads_file_url_src, mkfile))
 				t1.start()
-				#t1.join()
-				threads_downloads_file_url.append(t1)		# 将线程名添加到threads_downloads_file_url列表
+				# t1.join()
+				threads_downloads_file_url.append(t1)  # 将线程名添加到threads_downloads_file_url列表
 			else:
-				t1 = threading.Thread(target=_downloads_help_things, args=(i * (size // thread_num), (i + 1) * (size // thread_num), file_url, downloads_file_url_src, mkfile))
+				t1 = threading.Thread(target=_downloads_help_things, args=(
+				i * (size // thread_num), (i + 1) * (size // thread_num), file_url, downloads_file_url_src, mkfile))
 				t1.start()
-				threads_downloads_file_url.append(t1)		# 将线程名添加到threads_downloads_file_url列表
+				threads_downloads_file_url.append(t1)  # 将线程名添加到threads_downloads_file_url列表
 
-		for thread in threads_downloads_file_url:		# 从threads_downloads_file_url列表中获得线程名，然后一个个join
+		for thread in threads_downloads_file_url:  # 从threads_downloads_file_url列表中获得线程名，然后一个个join
 			e.wait()
 			thread.join()
 
 
-
-def _downloads_hash_bugs(link_downloads_assets, Max_try, file_dir, downloads_file_url_where, back_dir, file_path_name, hash_need_mode, sha1_objects_else, hash_asserts_json_objects_hash_name):
+def _downloads_hash_bugs(link_downloads_assets, Max_try, file_dir, downloads_file_url_where, back_dir, file_path_name,
+						 hash_need_mode, sha1_objects_else, hash_asserts_json_objects_hash_name):
 	"""
 	temp_link_downloads_assets是像http://resources.download.minecraft.net/的。
 	Max_try 是最大尝试次数。
@@ -177,7 +193,7 @@ def _downloads_hash_bugs(link_downloads_assets, Max_try, file_dir, downloads_fil
 		hash_yn_too_many_try = hash_yn_too_many_try + 1
 		if hash_yn_too_many_try >= 5:  # 如果验证失败超过五次那么就更改为官方源下载
 			print("mojang")  # debug
-			link_downloads_assets = "http://resources.download.minecraft.net/"  #temp_link_downloads_assets
+			link_downloads_assets = "http://resources.download.minecraft.net/"  # temp_link_downloads_assets
 		if hash_yn_too_many_try >= Max_try:
 			raise CoreBootstrapMainError("验证资源文件时尝试次数过多")
 		print(hash_yn_too_many_try)  # debug
@@ -186,7 +202,8 @@ def _downloads_hash_bugs(link_downloads_assets, Max_try, file_dir, downloads_fil
 		else:
 			os.chdir(file_dir)  # 到达应该下载的目录
 			_downloads_file_url(downloads_file_url_where)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-			sha1_objects_else = _hash_get_val(file_path_name, hash_need_mode)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
+			sha1_objects_else = _hash_get_val(file_path_name,
+											  hash_need_mode)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
 			os.chdir(back_dir)  # 返回objects目录
 			print(sha1_objects_else)  # debug
 	link_downloads_assets = bmcl_link  # 恢复为原来使用的源
@@ -201,6 +218,7 @@ def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 	# file_url 是链接地址
 	# downloads_file_url_src 文件地址
 	# mkfile 传参，在没有这个文件时决定是否创建此文件
+	# 还是单线程稳定。。。
 	downloads_file_url_response = requests.get(file_url)
 	try:
 		with open(downloads_file_url_src, mode="wb") as f:
@@ -216,39 +234,14 @@ def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 			raise CoreBootstrapMainError("错误, 无法找到文件")
 
 
-def multprocessing_task(tasks, cores: int, join: bool = True):
-	threads = []
-	def _run():
-		while threads:
-			try:
-				task = tasks.pop(0)
-				print(task)
-				task_download_url = task["url"]
-				task_need_src = task["path"]
-				task_need_mkfile = task["mkfile"]
-				_downloads_file_url(task_download_url, task_need_src, task_need_mkfile)
-				# function(task)
-			except KeyError as ke:
-				print(ke)
-			except IndexError as IndexE:
-				break
-	for i in range(cores+1):
-		thread = threading.Thread(target=_run)
-		thread.start()
-		threads.append(thread)
-	if join:
-		for thread in threads:
-			thread.join()
-
-
-
 class CoreBootstrapMainError(Exception):
 	def __init__(self, message):
 		super().__init__(message)
 
-def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要加载的文件,", PRINT_Things  = None):
+
+def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要加载的文件,", PRINT_Things=None):
 	try:
-		with open(read_json_file_src, mode='r',encoding="gbk") as f:
+		with open(read_json_file_src, mode='r', encoding="gbk") as f:
 			data = f.read(-1)
 			read_json_file_json = json.loads(data)
 			f.close()
@@ -256,8 +249,8 @@ def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要
 
 	except FileNotFoundError as e:
 		print("{}".format(PRINT_Things))
-		raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things,e))
-				
+		raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things, e))
+
 	except UnicodeDecodeError as UDE:
 		try:
 			with open(read_json_file_src, mode='r') as f:
@@ -266,20 +259,21 @@ def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要
 				f.close()
 		except FileNotFoundError as e:
 			print("{}".format(PRINT_Things))
-			raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things,e))	# 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
+			raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things, e))  # 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
 
 		except UnicodeDecodeError as UDE:
 			print("{}".format(PRINT_Things))
 			print("编码错误{}".format(UDE))
 
-def _encrypt(fpath: str, algorithm: str) -> str:#https://blog.csdn.net/qq_42951560/article/details/125080544
+
+def _encrypt(fpath: str, algorithm: str) -> str:  # https://blog.csdn.net/qq_42951560/article/details/125080544
 	with open(fpath, mode='rb') as f:
 		return hashlib.new(algorithm, f.read()).hexdigest()
 
 
-def _hash_get_val(hash_file_src,hash_need_type):
+def _hash_get_val(hash_file_src, hash_need_type):
 	'''hash_need_type是想要得到的hash值的类型(字符串)，只有sha1,sha256.md5.hash_file_src是需要得到hash值的文件的路径（字符串）'''
-	for algorithm in ('md5', 'sha1', 'sha256'):# https://blog.csdn.net/qq_42951560/article/details/125080544
+	for algorithm in ('md5', 'sha1', 'sha256'):  # https://blog.csdn.net/qq_42951560/article/details/125080544
 		hexdigest = _encrypt(hash_file_src, algorithm)
 		# print(f'{algorithm}: {hexdigest}')
 		# 第一次为MD5，第二次为sha1,第三次为sha256
@@ -287,10 +281,86 @@ def _hash_get_val(hash_file_src,hash_need_type):
 			return hexdigest
 
 
-def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
+def multprocessing_task(tasks, cores: int, join: bool = True):
+	threads = []
 
+	def _run():
+
+		while threads:
+
+			try:
+
+				task = tasks.pop(0)
+				print(task)
+				task_download_url = task["url"]
+				task_need_src = task["path"]
+				task_need_mkfile = task["mkfile"]
+				if task["hash-check"]:  # 检测hash-check位是否为True
+					logger.debug("新版下载时验证(多线程兼容版)")
+					# 以下是检查hash的多线程下载(受到GIL限制)
+
+					# 适应性变量声明区
+					mupt_nolink_downloads_assets = task[
+						"nolink_downloads_assets"]  # 相当于没有link_downloads_assets的link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name
+					mupt_asserts_json_objects_hash_name = task["asserts_json_objects_hash_name"]
+					mupt_assets_objects_path = task["assets_objects_path"]
+
+					_downloads_file_url(task_download_url, task_need_src, task_need_mkfile)
+					sha1_objects_else = _hash_get_val(task_need_src,
+													  'sha1')  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
+					# 参考了没有1.12.json的操作中的验证hash步骤
+					# 修改了 返回的目录位置
+					# 使用封装后的下载函数
+					# 修改了文件名
+					# 将变量名sha1_json_else 改为 sha1_objects_else
+					# 封装了一下验证
+					# 从下面搬过来的
+					bmcl_link = "https://bmclapi2.bangbang93.com/assets/"
+					mupt_link_downloads_assets = bmcl_link
+					hash_yn_too_many_try = 0
+					hash_yn = 1
+					while hash_yn == 0:
+						hash_yn_too_many_try = hash_yn_too_many_try + 1
+						if hash_yn_too_many_try >= 5:  # 如果验证失败超过五次那么就更改为官方源下载
+							logger.info("Try mojang API to download(尝试次数过多){}".format(hash_yn_too_many_try))  # debug
+							mupt_link_downloads_assets = "http://resources.download.minecraft.net/"  # temp_link_downloads_assets
+						if hash_yn_too_many_try >= 100:
+							logger.error("验证资源文件时尝试次数过多,你这都100次尝试都失败了。看看你的网络是不是有什么大病。。。")
+							raise CoreBootstrapMainError("验证资源文件时尝试次数过多")
+						print(hash_yn_too_many_try)  # debug
+						if mupt_asserts_json_objects_hash_name == sha1_objects_else:
+							hash_yn = 1  # 如果hash正确就跳出循环
+						else:
+							os.chdir(mupt_asserts_json_objects_hash_name[0:2])  # 到达应该下载的目录
+							_downloads_file_url(mupt_link_downloads_assets + mupt_nolink_downloads_assets,
+												task_need_src,
+												task_need_mkfile)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
+
+							sha1_objects_else = _hash_get_val(task_need_src,
+															  "sha1")  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
+							os.chdir(mupt_asserts_json_objects_hash_name)  # 返回objects目录
+							print(sha1_objects_else)  # debug
+					mupt_link_downloads_assets = bmcl_link  # 恢复为原来使用的源
+				else:
+					_downloads_file_url(task_download_url, task_need_src, task_need_mkfile)
+			# function(task)
+			except KeyError as ke:
+				print(ke)
+			except IndexError as IndexE:
+				break
+
+	for i in range(cores + 1):
+		thread = threading.Thread(target=_run)
+		thread.start()
+		threads.append(thread)
+	if join:
+		for thread in threads:
+			thread.join()
+
+
+def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 	global link_downloads_launcher
-	if link_type == "mojang" or link_type is None:		#使用mojang api
+	if link_type == "mojang" or link_type is None:  # 使用mojang api
 		logger.warning("using Mojang api")
 		link_downloads_version_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
@@ -305,7 +375,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_fabric_meta = "https://meta.fabricmc.net"
 		link_downloads_maven = "https://maven.fabricmc.net"
 
-	elif link_type == "BMCLAPI":		# 使用BMCLAPI
+	elif link_type == "BMCLAPI":  # 使用BMCLAPI
 		logger.info("using BMCLAPI")
 		link_downloads_version_manifest = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json"
@@ -320,11 +390,11 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_fabric_meta = "https://bmclapi2.bangbang93.com/fabric-meta"
 		link_downloads_maven = "https://bmclapi2.bangbang93.com/maven"
 
-	elif link_type == "MCBBS":		# 使用MCBBS api
+	elif link_type == "MCBBS":  # 使用MCBBS api
 		logger.error("using MCBBS api ,there is nothing.")
 		pass
 
-	else:		# 如果都不是就用mojang(重复？)
+	else:  # 如果都不是就用mojang(重复？)
 		logger.warning("using Mojang api")
 		link_downloads_version_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest.json"
 		link_downloads_snapshot_manifest = "http://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
@@ -341,7 +411,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 	if selfup:
 		# global running_src
-		running_src = os.getcwd()		# 获得当前工作目录
+		running_src = os.getcwd()  # 获得当前工作目录
 		CPU_CORE = multiprocessing.cpu_count()
 
 		if os.path.isdir(os.path.join(mc_path, "versions", jar_version)):
@@ -356,7 +426,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			logger.debug("移动到:{}".format(os.path.join(mc_path, "versions")))
 			os.mkdir(jar_version)
 			logger.debug("创建文件夹:{}".format(jar_version))
-			os.chdir(running_src)		# 返回工作目录
+			os.chdir(running_src)  # 返回工作目录
 			logger.debug("返回工作目录:{}".format(running_src))
 
 		if os.path.isfile(os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar"):
@@ -366,14 +436,15 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			print("主游戏文件:不存在")
 			logger.info("主游戏文件:不存在,{}".format((os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar")))
 			print("正在下载,这可能需要一段时间")
-			with alive_bar(len(range(100)), force_tty=True) as bar:	#这里没卵用，主要是因为没开异步
+			with alive_bar(len(range(100)), force_tty=True) as bar:  # 这里没卵用，主要是因为没开异步
 				for item in range(50):  # 遍历任务
-					bar()		# 显示进度
+					bar()  # 显示进度
 					time.sleep(0.01)
 				bar()
-				_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/jar", os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar", True)
+				_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/jar",
+									os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar", True)
 				for item in range(30):  # 遍历任务
-					bar()		# 显示进度
+					bar()  # 显示进度
 					time.sleep(0.000001)
 				for item in range(19):  # 遍历任务
 					bar()  # 显示进度
@@ -385,14 +456,16 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		else:
 			print("配置文档:不存在")
 			print("正在下载,这可能需要一段时间")
-			_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/json", os.path.join(mc_path, "versions", jar_version, jar_version) + ".json", True)		# 下载JSON配置文件
+			_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/json",
+								os.path.join(mc_path, "versions", jar_version, jar_version) + ".json",
+								True)  # 下载JSON配置文件
 			print("下载完毕")
 
-
 		print("正在预加载:配置文档")
-		start_json = _read_json_file((os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json"), "错误, 无法找到描述文件, 请检查您的安装", "预加载配置文档失败")
+		start_json = _read_json_file((os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json"),
+									 "错误, 无法找到描述文件, 请检查您的安装", "预加载配置文档失败")
 		print("配置加载完毕")
-			
+
 		# 我早知道就不在这里用单独的部分了。。。
 
 		assets_Index_sh1 = start_json['assetIndex']['sha1']
@@ -414,10 +487,10 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		i = 0
 		for item in library_download_list:
 			temp = item["name"]
-			print(temp, temp.count("."))	# debug
+			print(temp, temp.count("."))  # debug
 			if temp.count(".") >= 3 and i == 0:
 				t2 = temp.replace(".", "/", 1)
-			if temp.count(".") == 1 and i == 1:	 # oshi-project:oshi-core:1.1
+			if temp.count(".") == 1 and i == 1:  # oshi-project:oshi-core:1.1
 				pass
 			if temp.count(".") == 1 and i == 1:
 				pass
@@ -458,8 +531,9 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					else:
 						downloads_natives_list.append(item["classifiers"])
 				except KeyError as e:
-					raise CoreBootstrapMainError("错误,未定义的数据.In 1.12.2.json. It doesn't have classifiers or the mojang update?")
-		
+					raise CoreBootstrapMainError(
+						"错误,未定义的数据.In 1.12.2.json. It doesn't have classifiers or the mojang update?")
+
 		for item in library_download_list:
 			if run_time_environment == 'nt':
 				try:
@@ -469,31 +543,31 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						downloads_natives_url_list.append(item["downloads"]["classifiers"]["natives-windows"]["url"])
 				except KeyError as KE:
 					print(KE)
-		#print(downloads_artifact_inlib_list)
-		#print(downloads_natives_list)		# 此列表被移除但未更改
-		#print(downloads_lib_name)
+		# print(downloads_artifact_inlib_list)
+		# print(downloads_natives_list)		# 此列表被移除但未更改
+		# print(downloads_lib_name)
 		print(downloads_natives_path_list)
 		print(run_time_environment)
 		# 本来想把lib下载放在这里
 
-		assets_index_path = os.path.join(mc_path, "assets\\indexes\\")    # 拼接index文件夹路径
+		assets_index_path = os.path.join(mc_path, "assets\\indexes\\")  # 拼接index文件夹路径
 		assets_objects_path = os.path.join(mc_path, "assets\\objects\\")
 
-		if os.path.isdir(assets_index_path):		# indexes文件夹是否存在？
+		if os.path.isdir(assets_index_path):  # indexes文件夹是否存在？
 			pass
 		else:
 			os.chdir(os.path.join(mc_path, "assets"))
-			os.mkdir("indexes")		# 所有版本的资源索引文件都在这
+			os.mkdir("indexes")  # 所有版本的资源索引文件都在这
 
-		file_index_objects = os.path.isfile(assets_index_path + assets_Index_id + ".json")    # 1.12.json文件是否存在?
+		file_index_objects = os.path.isfile(assets_index_path + assets_Index_id + ".json")  # 1.12.json文件是否存在?
 		if file_index_objects:  # 如果file_index_objects的值为真（1.12.json存在的情况）
 			sha1_json = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')
 			# 获得index中的1.12.json的hash(sha1)
-			if assets_Index_sh1 == sha1_json:   # 如果文件的sha1值正常
-				print("资源索引文件正常")		# 1.12.json
+			if assets_Index_sh1 == sha1_json:  # 如果文件的sha1值正常
+				print("资源索引文件正常")  # 1.12.json
 
 			else:
-				hash_yn = 0		# 重复了没有1.12.json的操作中的验证hash步骤
+				hash_yn = 0  # 重复了没有1.12.json的操作中的验证hash步骤
 				hash_yn_too_many_try = 0
 				sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')
 				while hash_yn == 0:
@@ -502,29 +576,31 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						raise CoreBootstrapMainError("验证资源索引文件时尝试次数过多")
 
 					if assets_Index_sh1 == sha1_json_else:
-						hash_yn = 1		# 如果hash正确就跳出循环
+						hash_yn = 1  # 如果hash正确就跳出循环
 					else:
-						os.chdir(assets_index_path)	 # 到达应该下载的目录
-						response = requests.get(assets_Index_download_url)	 # 下载
-						with open(assets_Index_id + ".json", mode="wb+") as f:		# 写入
+						os.chdir(assets_index_path)  # 到达应该下载的目录
+						response = requests.get(assets_Index_download_url)  # 下载
+						with open(assets_Index_id + ".json", mode="wb+") as f:  # 写入
 							f.write(response.content)
 							f.close()
-						sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
-						os.chdir(running_src)	# 返回程序运行时目录
+						sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
+													   'sha1')  # 获得index中的1.12.json的hash(sha1)
+						os.chdir(running_src)  # 返回程序运行时目录
 
-		else:       # 1.12.json不存在的情况
+		else:  # 1.12.json不存在的情况
 			os.chdir(assets_index_path)
 			response = requests.get(assets_Index_download_url)
 			with open(assets_Index_id + ".json", mode="wb+") as f:
 				f.write(response.content)
 				f.close()
-			sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
-			hash_yn = 0		# 验证hash是否正确
+			sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
+										   'sha1')  # 获得index中的1.12.json的hash(sha1)
+			hash_yn = 0  # 验证hash是否正确
 			hash_yn_too_many_try = 0
 			while hash_yn == 0:
 				hash_yn_too_many_try = hash_yn_too_many_try + 1
-				if hash_yn_too_many_try >= 10:		# 尝试次数过多就引发这个错误,防止程序一直卡在这
-					raise CoreBootstrapMainError("验证资源索引文件时尝试次数过多")		# 可以考虑在参数上加上循环次数过多时候是否退出（core_bootstrap_main)
+				if hash_yn_too_many_try >= 10:  # 尝试次数过多就引发这个错误,防止程序一直卡在这
+					raise CoreBootstrapMainError("验证资源索引文件时尝试次数过多")  # 可以考虑在参数上加上循环次数过多时候是否退出（core_bootstrap_main)
 
 				if assets_Index_sh1 == sha1_json_else:
 					hash_yn = 1
@@ -534,7 +610,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					with open(assets_Index_id + ".json", mode="wb+") as f:
 						f.write(response.content)
 						f.close()
-					sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1') # 获得index中的1.12.json的hash(sha1)
+					sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
+												   'sha1')  # 获得index中的1.12.json的hash(sha1)
 					os.chdir(running_src)
 
 		# 下面就有1.12.json
@@ -548,13 +625,12 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			os.mkdir("objects")
 			os.chdir(running_src)
 
-
 		os.chdir(os.path.join(mc_path, "assets"))  # 切换到assets目录（最后记得移动回去）
 		# 其实上面不回去就行了，不过这样更明显一点
 
 		ret_read_json_val = _read_json_file(assets_index_path + assets_Index_id + ".json")
 		# 获得1.12.json文件中的内容并序列化为字典
-		os.chdir(running_src)		# 回去了 331
+		os.chdir(running_src)  # 回去了 331
 		# with open('1.12.2(g).json', mode="w+") as f:
 		# f.write(json.dumps(start_json, indent=4, ensure_ascii=False))
 		# https://blog.csdn.net/weixin_30411455/article/details/114407713
@@ -565,7 +641,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		asserts_json_objects_hash = []
 		print("正在获得资源名")
 		with alive_bar(len(range(1305)), force_tty=True) as bar:
-			for key, item in ret_read_json_val["objects"].items():		# 获得资源名
+			for key, item in ret_read_json_val["objects"].items():  # 获得资源名
 				bar()
 				asserts_json_objects_item.append(item)
 				asserts_json_objects.append(key)
@@ -573,21 +649,25 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		# print(asserts_json_objects_item)		# debug list dict
 		# print(asserts_json_objects_item[0])		# debug dict list[0]
 
-		for list_hash in asserts_json_objects_item:		# dict
-			asserts_json_objects_hash.append(list_hash["hash"])		# dict to list
+		for list_hash in asserts_json_objects_item:  # dict
+			asserts_json_objects_hash.append(list_hash["hash"])  # dict to list
 
-		os.chdir(assets_objects_path)		# 前往objects文件夹准备建立资源文件夹
+		os.chdir(assets_objects_path)  # 前往objects文件夹准备建立资源文件夹
 		print("正在检查资源文件")
 		downloads_file_url_list = []
 		with alive_bar(len(range(1305)), force_tty=True) as bar:
 			for asserts_json_objects_hash_name in asserts_json_objects_hash:
-				if os.path.isdir(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2])):		# 资源文件夹是否存在
-					if os.path.isfile(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)):
+				if os.path.isdir(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2])):  # 资源文件夹是否存在
+					if os.path.isfile(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2],
+												   asserts_json_objects_hash_name)):
 						# 资源文件是否存在
 						# 存在的话验证
 
-						sha1_objects_else = _hash_get_val(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), 'sha1')		# emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
-						print("s:", sha1_objects_else)		# debug
+						sha1_objects_else = _hash_get_val(
+							os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2],
+										 asserts_json_objects_hash_name),
+							'sha1')  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
+						print("s:", sha1_objects_else)  # debug
 						if asserts_json_objects_hash_name == sha1_objects_else:
 							pass
 						else:
@@ -617,16 +697,35 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 								hash_yn = 1  # 如果hash正确就跳出循环
 							else:
 								os.chdir(asserts_json_objects_hash_name[0:2])  # 到达应该下载的目录
-								_downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name, (os.path.join(assets_objects_path,  asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-								sha1_objects_else = _hash_get_val((os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), "sha1")  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
+								_downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[
+																			0:2] + "/" + asserts_json_objects_hash_name,
+													(os.path.join(assets_objects_path,
+																  asserts_json_objects_hash_name[0:2],
+																  asserts_json_objects_hash_name)),
+													True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
+								sha1_objects_else = _hash_get_val((os.path.join(assets_objects_path,
+																				asserts_json_objects_hash_name[0:2],
+																				asserts_json_objects_hash_name)),
+																  "sha1")  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
 								os.chdir(assets_objects_path)  # 返回objects目录
 								print(sha1_objects_else)  # debug
 						link_downloads_assets = bmcl_link  # 恢复为原来使用的源
 						bar()
 
-					else:		# 资源文件不存在的情况,但资源文件需要的文件夹存在
+					else:  # 资源文件不存在的情况,但资源文件需要的文件夹存在
 						# _downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name, os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), True)	# emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-						downloads_file_url_list.append({"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name), "path": (os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), "hash": asserts_json_objects_hash_name, "mkfile": True})
+						downloads_file_url_list.append(
+							{
+							"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name),
+							"path": (os.path.join(assets_objects_path,asserts_json_objects_hash_name[0:2],asserts_json_objects_hash_name)),
+							"hash": asserts_json_objects_hash_name,
+							"mkfile": True,
+							"hash-check": True,
+							"nolink_downloads_assets": asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name,
+							"assets_objects_path": assets_objects_path,
+							"asserts_json_objects_hash_name": asserts_json_objects_hash_name
+							}
+						)
 						# 上面这一大串构建了 "url":构造完毕的下载链接 ,"path":这里是路径,"mkfile":恒定为True
 						# sha1_objects_else = _hash_get_val(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), 'sha1')		# emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
 						# print("s:", sha1_objects_else)		# debug
@@ -663,7 +762,10 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					os.mkdir(asserts_json_objects_hash_name[0:2])
 					# 下面这段直接使用了上面有资源文件夹时下载的步骤
 					# _downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name, os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-					downloads_file_url_list.append({"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name), "path": (os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), "hash": asserts_json_objects_hash_name, "mkfile": True})
+					downloads_file_url_list.append({"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name), "path": (os.path.join(assets_objects_path,
+																		  asserts_json_objects_hash_name[0:2],
+																		  asserts_json_objects_hash_name)),
+													"hash": asserts_json_objects_hash_name, "mkfile": True})
 					# 上面这一大串构建了 "url":构造完毕的下载链接 ,"path":这里是路径,"mkfile":恒定为True
 					# sha1_objects_else = _hash_get_val(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), 'sha1')		# emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
 					# print("s:", sha1_objects_else)		# debug
@@ -702,12 +804,12 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		# lib文件下载
 		i_2 = 0
 		with alive_bar(len(range(37)), force_tty=True) as bar:
-			for item in downloads_artifact_inlib_list:		# 单个lib文件路径
+			for item in downloads_artifact_inlib_list:  # 单个lib文件路径
 				tmp = item.split("/")
 				tmplong = len(tmp)
 				i = 0
 				os.chdir(lib_path)
-				#for items in tmp:		# 创建文件夹并下载
+				# for items in tmp:		# 创建文件夹并下载
 				for items in tmp:
 					print(items)
 					if ".jar" in items:
@@ -720,7 +822,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					elif i <= tmplong - 1:
 						os.mkdir(items)
 						os.chdir(items)
-					#i += 1
+				# i += 1
 				i_2 += 1
 
 				os.chdir(lib_path)
@@ -745,8 +847,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 							archive.extractall(natives_path)
 							archive.close()
 					except zipfile.BadZipFile as zBZ:
-						print(zBZ,"解压失败")
-				elif i < tmplong - 1:		# 这里被淘汰
+						print(zBZ, "解压失败")
+				elif i < tmplong - 1:  # 这里被淘汰
 					os.mkdir(items)
 					os.chdir(items)
 				i += 1
@@ -770,6 +872,30 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 class CoreStartLoginError(Exception):
 	def __init__(self, message):
 		super().__init__(message)
+
+
+# 浏览器注册表信息
+_browser_regs = {
+	'IE': r"SOFTWARE\Clients\StartMenuInternet\IEXPLORE.EXE\DefaultIcon",
+	'chrome': r"SOFTWARE\Clients\StartMenuInternet\Google Chrome\DefaultIcon",
+	'edge': r"SOFTWARE\Clients\StartMenuInternet\Microsoft Edge\DefaultIcon",
+	'firefox': r"SOFTWARE\Clients\StartMenuInternet\FIREFOX.EXE\DefaultIcon",
+	'360': r"SOFTWARE\Clients\StartMenuInternet\360Chrome\DefaultIcon",
+}
+
+
+def get_browser_path(browser):
+	"""
+	获取浏览器的安装路径
+
+	browser: 浏览器名称
+	"""
+	try:
+		key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _browser_regs[browser])
+	except FileNotFoundError:
+		return None
+	value, _type = winreg.QueryValueEx(key, "")
+	return value.split(',')[0]
 
 
 def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_login=False, back_url: str = None, Mojang_login=False):
@@ -797,10 +923,22 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 	MS_login_token_get_link = "https://login.live.com/oauth20_token.srf"
 	if Mojang_MS_login:
 		if MS_login:
+
+			print(get_browser_path("chrome"))
+			try:
+				s = selenium.webdriver.chrome.service.Service("E:\Downloads\chromedriver_win32\chromedriver.exe")  # get_browser_path("chrome"))
+				driver = webdriver.Chrome(service=s)
+				driver.get("https://login.live.com/oauth20_token.srf")
+				while "code=" not in driver.current_url:
+					back_url = driver.current_url
+			except:
+				logger.error("此版本不支持除Chrome外的其他浏览器")
+				raise CoreStartLoginError("浏览器错误:浏览器不受支持")
+
 			try:
 				back_url_code_place = back_url.find("code=")
 				back_url_code_place_end = back_url.find("&")
-				back_url = back_url[back_url_code_place+5:back_url_code_place_end]
+				back_url = back_url[back_url_code_place + 5:back_url_code_place_end]
 			except AttributeError as eab:
 
 				if eab == "'int' object has no attribute 'replace'":
@@ -842,35 +980,38 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
 			}
 
-			#q = webbrowser.get().open_new("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
-			#print(q)
+			# q = webbrowser.get().open_new("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
+			# print(q)
 
-			MS_authcode = back_url		# 填入code进行访问OAuth,debug时可直接填入code=后&前的code
+
+			MS_authcode = back_url  # 填入code进行访问OAuth,debug时可直接填入code=后&前的code
 			post_ms_AT = \
-						"client_id=00000000402b5328&code=" + MS_authcode +\
-						"&grant_type=authorization_code&redirect_uri=https://login.live.com/oauth20_desktop.srf" + \
-						"&scope=service::user.auth.xboxlive.com::MBI_SSL"
+				"client_id=00000000402b5328&code=" + MS_authcode + \
+				"&grant_type=authorization_code&redirect_uri=https://login.live.com/oauth20_desktop.srf" + \
+				"&scope=service::user.auth.xboxlive.com::MBI_SSL"
 
 			r = requests.post(MS_login_token_get_link, data=post_ms_AT, headers=MS_head)
 			post_json_ms_token_back_json = json.loads(r.text)
-			try:		# 看看有没有error这个键
+			try:  # 看看有没有error这个键
 				post_json_ms_token_back_json_error = post_json_ms_token_back_json["error"]
 				print(post_json_ms_token_back_json_error)
 				print(post_json_ms_token_back_json)
-				if post_json_ms_token_back_json["error_description"] == "The provided value for the 'code' parameter is not valid. The code has expired.":
-					print("验证过期")		# 过期了
+				if post_json_ms_token_back_json[
+					"error_description"] == "The provided value for the 'code' parameter is not valid. The code has expired.":
+					print("验证过期")  # 过期了
 					raise CoreStartLoginError("无法通过Microsoft OAuth,验证过期.请重新进行登录操作")
 				else:
-					logger.error("无法通过Microsoft OAuth "+post_json_ms_token_back_json["error_description"])
-					raise CoreStartLoginError("无法通过Microsoft OAuth\n"+post_json_ms_token_back_json["error_description"])
-					# 不知道哪里错了,抛出错误
+					logger.error("无法通过Microsoft OAuth " + post_json_ms_token_back_json["error_description"])
+					raise CoreStartLoginError(
+						"无法通过Microsoft OAuth\n" + post_json_ms_token_back_json["error_description"])
+			# 不知道哪里错了,抛出错误
 			except KeyError as KE:
 				pass
 
-			print(r.text)		# debug
-			MS_T_back_A_T = post_json_ms_token_back_json["access_token"]		# 全称为 MS_Token_back_Access_Token
-			MS_T_back_R_T = post_json_ms_token_back_json["refresh_token"]		# 全称为 MS_Token_back_Refresh_Token
-			MS_T_back_user_id = post_json_ms_token_back_json["user_id"]			# 全称为 MS_Token_back_user_id
+			print(r.text)  # debug
+			MS_T_back_A_T = post_json_ms_token_back_json["access_token"]  # 全称为 MS_Token_back_Access_Token
+			MS_T_back_R_T = post_json_ms_token_back_json["refresh_token"]  # 全称为 MS_Token_back_Refresh_Token
+			MS_T_back_user_id = post_json_ms_token_back_json["user_id"]  # 全称为 MS_Token_back_user_id
 			MS_Token_back_timeout = post_json_ms_token_back_json["expires_in"]  # 全称为 MS_Token_back_timeout
 			print(MS_T_back_A_T)
 			print(MS_T_back_R_T)
@@ -886,7 +1027,7 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 				"TokenType": "JWT"
 			}
 			print(post_xbl_auth)
-			post_xbl_auth_json = json.dumps(post_xbl_auth)		# 将字典转为json格式
+			post_xbl_auth_json = json.dumps(post_xbl_auth)  # 将字典转为json格式
 			print(post_xbl_auth_json)
 			r = requests.post(XBL_login_token_get_link, data=post_xbl_auth_json, headers=XBL_head)
 			print(r.text)
@@ -894,25 +1035,25 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			try:
 				XBL_ret_token = XBL_ret_json["Token"]
 				XBL_ret_xui_list = XBL_ret_json["DisplayClaims"]["xui"][0]
-				XBL_ret_token_ush = XBL_ret_xui_list["uhs"]		# 获得user hash
+				XBL_ret_token_ush = XBL_ret_xui_list["uhs"]  # 获得user hash
 			except KeyError as KE:
 				print(XBL_ret_json)
-				raise CoreStartLoginError("XBL认证失败\n"+XBL_ret_json)
+				raise CoreStartLoginError("XBL认证失败\n" + XBL_ret_json)
 			# XBL验证完毕,下面是XSTS
 			post_xsts_auth = {
-								"Properties": {
-								"SandboxId": "RETAIL",
-								"UserTokens": [
-										XBL_ret_token
-								]
-								},
-								"RelyingParty": "rp://api.minecraftservices.com/",
-								"TokenType": "JWT"
-								}
+				"Properties": {
+					"SandboxId": "RETAIL",
+					"UserTokens": [
+						XBL_ret_token
+					]
+				},
+				"RelyingParty": "rp://api.minecraftservices.com/",
+				"TokenType": "JWT"
+			}
 
 			XSTS_login_token_get_link = "https://xsts.auth.xboxlive.com/xsts/authorize"
-			XSTS_head = XBL_head		# XSTS和XBL的请求头一致
-			post_xsts_auth_json = json.dumps(post_xsts_auth)		# 将字典转为json格式
+			XSTS_head = XBL_head  # XSTS和XBL的请求头一致
+			post_xsts_auth_json = json.dumps(post_xsts_auth)  # 将字典转为json格式
 
 			r = requests.post(XSTS_login_token_get_link, data=post_xsts_auth_json, headers=XSTS_head)
 
@@ -973,10 +1114,23 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 		elif Mojang_login:
 			post_json = 9
 			r = requests.post(mojang_Yggdrasil + "/authenticate", data=post_json, headers=header)
-		# print(r.text)
+
+	if Update_Token and Refresh_Token:
+		pass
+
+	elif Update_Token:
+		pass
+
+	elif Refresh_Token:
+		pass
 
 
-def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn = False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
+# print(r.text)
+
+
+def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn=False,
+				  G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M",
+				  cph=None):  # java_path以后可以升个级作判断，自己检测Java
 	'''
 		java_path:Java路径(字符串)(可以填写java)
 
@@ -1006,7 +1160,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 	'''
 
 	# java_path:Java路径（字符串）（可以填写java)
-	#mc_path:游戏目录（到.minecraft）
+	# mc_path:游戏目录（到.minecraft）
 	# G1NewSizePercent_size:20（字符串）
 	# G1ReservePercent_size：20（字符串）
 	# launcher_name：需要启动的游戏版本（字符串）
@@ -1067,6 +1221,8 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		except KeyError as e:
 			pass
 
+	library_num = i
+
 	# for item in downloads_things_list:
 	# i = i + 1
 	# try:
@@ -1121,7 +1277,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			 " -Dminecraft.launcher.version=" + "0.0.1" + \
 			 " -cp "
 	temp_2 = temp_1
-	if not uuid_yn:		# 如果没有uuid那就生成一个
+	if not uuid_yn:  # 如果没有uuid那就生成一个
 		launcher_uuid_uuid = uuid.uuid4()
 		launcher_uuid = launcher_uuid_uuid.hex
 		uuid_val = launcher_uuid
@@ -1131,21 +1287,21 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 
 	if start_json["mainClass"] == "net.minecraft.client.main.Main":
 
-		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):		# 这是低于1.8.0的解决方案
+		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
 			for downloads_artifact_inlib in downloads_artifact_inlib_list:
 				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
 			print(downloads_artifact_inlib)
 			the_temp = "\\"
 			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.client.main.Main" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 	" --assetsDir " + assets_index_path + \
-					" --assetIndex " + assets_index_name + \
-					" --uuid " + uuid_val + \
-					" --accessToken " + aT + \
-					" --userProperties {}" + \
-					" --userType Legacy" + \
-					' --versionType ' + launcher_name_self + \
-					" --width 854" + \
-					" --height 480"
+					 " --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userProperties {}" + \
+					 " --userType Legacy" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
 			os.system(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
@@ -1158,7 +1314,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			print(downloads_artifact_inlib)
 			the_temp = "\\"
 			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.minecraft.client.main.Main" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 	" --assetsDir " + assets_index_path + \
+					 " --assetsDir " + assets_index_path + \
 					 " --assetIndex " + assets_index_name + \
 					 " --uuid " + uuid_val + \
 					 " --accessToken " + aT + \
@@ -1199,27 +1355,27 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		for item in forge["arguments"]["jvm"]:
 			temp_3_t = temp_3_t + " " + item
 
-		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):		# 这是低于1.8.0的解决方案
+		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
 			temp_3 = temp_3_t + " cpw.mods.modlauncher.Launcher" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 	" --assetsDir " + assets_index_path + \
-				 	" --assetIndex " + assets_index_name + \
-				 	" --uuid " + uuid_val + \
-				 	" --accessToken " + aT + \
-					" --userProperties {}" + \
-				 	" --userType Legacy" + \
-				 	' --versionType ' + launcher_name_self + \
-				 	" --width 854" + \
-				 	" --height 480"
+					 " --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userProperties {}" + \
+					 " --userType Legacy" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
 		else:
 			temp_3 = temp_3_t + " cpw.mods.modlauncher.Launcher" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
-				 	" --assetsDir " + assets_index_path + \
-				 	" --assetIndex " + assets_index_name + \
-				 	" --uuid " + uuid_val + \
-				 	" --accessToken " + aT + \
-				 	" --userType Legacy" + \
-				 	' --versionType ' + launcher_name_self + \
-				 	" --width 854" + \
-				 	" --height 480"
+					 " --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userType Legacy" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
 
 		item_i = 0  # forge
 
@@ -1252,7 +1408,64 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 			return_IN_list.append(launcher_uuid)
 			return return_IN_list
 
+	elif start_json["mainClass"] == "net.fabricmc.loader.impl.launch.knot.KnotClient":
+
+		argument_forge = []  # forge
+		for item in pathes_other:  # forge
+			if item["id"] == "fabric":  # forge
+				fabric = item  # forge
+
+		for library_download_farbric in library_download_list:
+			try:
+				if library_download_farbric["url"] == "https://maven.fabricmc.net/":
+					library_download_farbric = library_download_farbric["name"]
+					temp_2 = temp_2 + (os.path.join(lib_path, (library_download_farbric.replace("/", "\\").replace(":", "\\")) + ".jar;"))
+			except KeyError as eke:
+				pass
+
+		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
+			for downloads_artifact_inlib in downloads_artifact_inlib_list:  # 但我并不确定在这里会有用,毕竟是神奇的fabric
+				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
+			print(downloads_artifact_inlib)
+			the_temp = "\\"
+			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.fabricmc.loader.impl.launch.knot.KnotClient" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+					 " --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userProperties {}" + \
+					 " --userType mojang" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
+			os.system(temp_2 + temp_3)
+			if uuid_yn:
+				return "ok", temp_2 + temp_3
+			else:
+				return "ok", temp_2 + temp_3, launcher_uuid
+
+		else:
+			for downloads_artifact_inlib in downloads_artifact_inlib_list:
+				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
+			print(downloads_artifact_inlib)
+			the_temp = "\\"
+			temp_3 = client_jar_path + the_temp + gameversion + ".jar" + " net.fabricmc.loader.impl.launch.knot.KnotClient" + " --username " + username + " --version " + gameversion + " --gameDir " + mc_path + \
+					 " --assetsDir " + assets_index_path + \
+					 " --assetIndex " + assets_index_name + \
+					 " --uuid " + uuid_val + \
+					 " --accessToken " + aT + \
+					 " --userType mojang" + \
+					 ' --versionType ' + launcher_name_self + \
+					 " --width 854" + \
+					 " --height 480"
+			os.system(temp_2 + temp_3)
+			if uuid_yn:
+				return "ok", temp_2 + temp_3
+			else:
+				return "ok", temp_2 + temp_3, launcher_uuid
+
 	elif start_json["mainClass"] == "net.minecraft.launchwrapper.Launch":
+
 		if _Check_versions_in(launcher_name) < _Check_versions_in("1.8.0"):  # 这是低于1.8.0的解决方案
 			for downloads_artifact_inlib in downloads_artifact_inlib_list:
 				temp_2 = temp_2 + (os.path.join(lib_path, (downloads_artifact_inlib.replace("/", "\\")) + ";"))
@@ -1322,15 +1535,16 @@ class CoreMcserverInitializationError(Exception):
 	def __init__(self, message):
 		super().__init__(message)
 
-def core_mcserver(server_version, server_type = None):
+
+def core_mcserver(server_version, server_type=None):
 	"""
 	server_version:服务端版本
 	server_type：服务端类型(Vanilla/paper/Forge/spigot/sponge/spongeFore)
 	"""
+	# 未完成
 	const.USER_NAME = os.getlogin()
 	user_name = const.USER_NAME
 	if not os.name == "nt":
-
 		logger.critical("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
 		CoreMcserverInitializationError("暂不支持除Windows NT 平台外的操作系统{}".format(os.name))
 
@@ -1347,7 +1561,7 @@ class CoreForgeInstallError(Exception):
 
 def core_Forge_install_clint_version_Get(version=None, type="All"):
 	"""
-	此函数用来获取可用版本列表
+	此函数用来获取Forge可用版本列表
 	如果什么也不填就返回可使用Forge的Minecraft版本
 	只输入某个版本（version）返回此版本的所有build号和所有可用版本号
 	输入某个版本（version）和某个模式（type)可获取对应模式的返回。如，type=All时返回此版本Forge的所有build号和所有可用版本号
@@ -1366,10 +1580,10 @@ def core_Forge_install_clint_version_Get(version=None, type="All"):
 		forge_build_list.append(item["build"])  # 将build版本号添加到列表
 		forge_versions_list.append(item["version"])  # 将版本号添加到列表
 	if version is None:
-		return rt		# 返回受Forge支持的Minecraft版本列表
+		return rt  # 返回受Forge支持的Minecraft版本列表
 
 	if version in rt:
-		if type == "All" or type == "all" or type == "ALL":		# 这里最规范的用法应该是All其次是all
+		if type == "All" or type == "all" or type == "ALL":  # 这里最规范的用法应该是All其次是all
 			return forge_build_list, forge_versions_list
 		elif type == "build":
 			return forge_build_list
@@ -1377,7 +1591,8 @@ def core_Forge_install_clint_version_Get(version=None, type="All"):
 			return forge_versions_list
 
 
-def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
+def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge_install_headless_type = "BMCLAPI"):
+	# 未完成
 	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
 	rt = r.json()
 	logger.debug("version={}".format(version_game))
@@ -1390,10 +1605,12 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 	const.RUNNING_PATH = os.getcwd()
 	const.GAME_PATH = os.path.join(mc_path, 'versions', version_game)
-	const.FORGE_INSTALL_HEADLESS_PATH = "C:\\Users\\XMX\\PycharmProjects\\smcl\\formal\\Core\\forge-installer-headless.jar"
-	game_path = const.GAME_PATH		# 指向const.GAME_PATH的指针(伪)
-	forge_install_headless_path = const.FORGE_INSTALL_HEADLESS_PATH		# 指向const.FORGE_INSTALL_HEADLESS_PATH的指针(伪)
-	running_path = const.RUNNING_PATH		# 指向const.RUNNING_PATH的指针(伪)
+	const.FORGE_INSTALL_HEADLESS_PATH = "forge-installer-headless.jar"
+	const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH = "forge-install-bootstrapper.0.2.0.jar"
+	game_path = const.GAME_PATH  # 指向const.GAME_PATH的指针(伪)
+	forge_install_headless_path = const.FORGE_INSTALL_HEADLESS_PATH  # 指向const.FORGE_INSTALL_HEADLESS_PATH的指针(伪)
+	forge_install_headless_BMCLAPI = const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH  # 指向const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH的指针(伪)
+	running_path = const.RUNNING_PATH  # 指向const.RUNNING_PATH的指针(伪)
 
 	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game))
 	Forge_version_list = r_Forge_version_list.json()
@@ -1401,8 +1618,8 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 	forge_build_list = []
 	forge_versions_list = []
 	for item in Forge_version_list:
-		forge_build_list.append(item["build"])		# 将build版本号添加到列表
-		forge_versions_list.append(item["version"])		# 将版本号添加到列表
+		forge_build_list.append(item["build"])  # 将build版本号添加到列表
+		forge_versions_list.append(item["version"])  # 将版本号添加到列表
 
 	if version_forge == "latest":
 		# for items in forge_versions_list:
@@ -1413,17 +1630,18 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 				forge_downloads_clint_install = item["files"]
 				forge_downloads_clint_install_version = item["version"]
 
-				logger.debug("latest-jar:{}".format(forge_downloads_clint_install))		# log记录jar json
-				logger.debug("latest-build-num:{}".format(max(forge_build_list)))		# log记录build
+				logger.debug("latest-jar:{}".format(forge_downloads_clint_install))  # log记录jar json
+				logger.debug("latest-build-num:{}".format(max(forge_build_list)))  # log记录build
 				logger.debug("latest-jar-version:{}".format(item["version"]))
 
 		for items in forge_downloads_clint_install:
 			if items["format"] == "jar":
 				forge_downloads_clint_install_hash = items["hash"]
 
-				logger.debug("latest-jar-hash:{}".format(forge_downloads_clint_install_hash))		# log记录jar hash值
+				logger.debug("latest-jar-hash:{}".format(forge_downloads_clint_install_hash))  # log记录jar hash值
 
-		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))		# log记录跳转链接获取链接
+		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(
+			max(forge_build_list)))  # log记录跳转链接获取链接
 
 		r = requests.get("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))
 
@@ -1438,10 +1656,12 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 
 				logger.debug("forge安装目录为:{}".format((os.path.join(mc_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)))))
 			else:
+
 				logger.info("已检测到forge安装包，正在验证是否可用")
 				if _hash_get_val(("forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version)), "sha1") == forge_downloads_clint_install_hash:
 					logger.info("此安装包可用")
 					os.chdir(running_path)
+
 				else:
 					xhkz = True
 					while xhkz:
@@ -1452,14 +1672,20 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge):
 							os.chdir(running_path)
 							xhkz = False
 
+			if forge_install_headless_type == "FIHL_xfl03":
+				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path)))
+				logger.info("正在进行安装,这可能需要一段时间")
 				os.system('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
+
+			elif forge_install_headless_type == "BMCLAPI":
+
+				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path)))
+				logger.info("正在进行安装,这可能需要一段时间")
+				os.system('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path))
 		else:
-			core_Forge_install_clint("暂不支持版本隔离模式")
 
-
+			logger.error("暂不支持版本隔离模式")
+			CoreForgeInstallError("暂不支持版本隔离模式")
 
 	print(forge_versions_list)
 	print(forge_build_list)
-
-
-
