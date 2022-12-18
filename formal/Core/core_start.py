@@ -898,10 +898,9 @@ def get_browser_path(browser):
 	return value.split(',')[0]
 
 
-def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_login=False, back_url: str = None, Mojang_login=False):
+def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=False, MS_login=False, back_url: str = None, Mojang_login=False):
 	"""
-	Update_Token:更新AccessToken令牌
-	Refresh_Token:刷新令牌用的令牌
+	Refresh_Token:更新AccessToken令牌
 	Mojang_MS_login:正版登录（直接填True）
 	MS_login：进行微软/Xbox登录填True,否则填False
 	back_url：微软/Xbox登录返回的链接，也就是访问https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf
@@ -927,13 +926,13 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			print(get_browser_path("chrome"))
 			try:
 				s = selenium.webdriver.chrome.service.Service("E:\Downloads\chromedriver_win32\chromedriver.exe")  # get_browser_path("chrome"))
-				driver = webdriver.Chrome(service=s)
-				driver.get("https://login.live.com/oauth20_token.srf")
-				while "code=" not in driver.current_url:
-					back_url = driver.current_url
+			 	driver = webdriver.Chrome(service=s)
+			 	driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
+			 	while "code=" not in driver.current_url:
+			 		back_url = driver.current_url
 			except:
-				logger.error("此版本不支持除Chrome外的其他浏览器")
-				raise CoreStartLoginError("浏览器错误:浏览器不受支持")
+			 	logger.error("此版本不支持除Chrome外的其他浏览器")
+			 	raise CoreStartLoginError("浏览器错误:浏览器不受支持")
 
 			try:
 				back_url_code_place = back_url.find("code=")
@@ -1108,21 +1107,159 @@ def core_start_Login(Update_Token, Refresh_Token, Mojang_MS_login=False, MS_logi
 			except KeyError as KE:
 				raise CoreStartLoginError("账号验证错误:没有Minecraft(uuid/name)")
 
-			return name_MS_xbox, uuid_MS_xbox, MinecraftAccessToken
+			ReturnDict = {"name_MS_xbox": name_MS_xbox, "uuid_MS_xbox": uuid_MS_xbox, "MinecraftAccessToken": MinecraftAccessToken, "MS_T_back_R_T": MS_T_back_R_T}
+			return ReturnDict
 
 
 		elif Mojang_login:
 			post_json = 9
 			r = requests.post(mojang_Yggdrasil + "/authenticate", data=post_json, headers=header)
 
-	if Update_Token and Refresh_Token:
-		pass
+	if Refresh_Token:
+		# 更新Refresh_Token并刷新AccessToken
+		XBL_head = {
+			"cookie": cookie,
+			"Accept": "application/json",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Accept-Language": "zh-CN,zh;q=0.9",
+			"Connection": "keep-alive",
+			"Content-Type": "application/json",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
+		}
+		MS_head = {
+			"cookie": cookie,
+			"Accept": "*/*",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Accept-Language": "zh-CN,zh;q=0.9",
+			"Connection": "keep-alive",
+			"Content-Type": "application/x-www-form-urlencoded",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
+		}
+		post_ms_AT = \
+			"client_id=00000000402b5328" \
+			"&refresh_token=" + refresh_token_str + \
+			"&grant_type=refresh_token" \
+			"&redirect_uri=https://login.live.com/oauth20_desktop.srf" + \
+			"&scope=service::user.auth.xboxlive.com::MBI_SSL"
 
-	elif Update_Token:
-		pass
+		r = requests.post(MS_login_token_get_link, data=post_ms_AT, headers=MS_head)
+		post_json_ms_token_back_json = json.loads(r.text)
+		try:  # 看看有没有error这个键
+			post_json_ms_token_back_json_error = post_json_ms_token_back_json["error"]
+			print(post_json_ms_token_back_json_error)
+			print(post_json_ms_token_back_json)
+			if post_json_ms_token_back_json["error_description"] == "The provided value for the 'code' parameter is not valid. The code has expired.":
+				print("刷新令牌过期")  # 过期了
+				raise CoreStartLoginError("无法通过Microsoft OAuth,刷新令牌过期.请重新进行登录操作")
+			else:
+				logger.error("无法通过Microsoft OAuth " + post_json_ms_token_back_json["error_description"])
+				raise CoreStartLoginError("无法通过Microsoft OAuth\n" + post_json_ms_token_back_json["error_description"])
+		# 不知道哪里错了,抛出错误
+		except KeyError as KE:
+			pass
 
-	elif Refresh_Token:
-		pass
+		print(r.text)  # debug
+		MS_T_back_A_T = post_json_ms_token_back_json["access_token"]  # 全称为 MS_Token_back_Access_Token
+		MS_T_back_R_T = post_json_ms_token_back_json["refresh_token"]  # 全称为 MS_Token_back_Refresh_Token
+		MS_T_back_user_id = post_json_ms_token_back_json["user_id"]  # 全称为 MS_Token_back_user_id
+		MS_Token_back_timeout = post_json_ms_token_back_json["expires_in"]  # 全称为 MS_Token_back_timeout
+		print(MS_T_back_A_T)
+		print(MS_T_back_R_T)
+		# 微软完成下面是XBL
+		XBL_login_token_get_link = "https://user.auth.xboxlive.com/user/authenticate"
+		post_xbl_auth = {
+			"Properties": {
+				"AuthMethod": "RPS",
+				"SiteName": "user.auth.xboxlive.com",
+				"RpsTicket": "{}".format(MS_T_back_A_T)
+			},
+			"RelyingParty": "http://auth.xboxlive.com",
+			"TokenType": "JWT"
+		}
+		print(post_xbl_auth)
+		post_xbl_auth_json = json.dumps(post_xbl_auth)  # 将字典转为json格式
+		print(post_xbl_auth_json)
+		r = requests.post(XBL_login_token_get_link, data=post_xbl_auth_json, headers=XBL_head)
+		print(r.text)
+		XBL_ret_json = json.loads(r.text)
+		try:
+			XBL_ret_token = XBL_ret_json["Token"]
+			XBL_ret_xui_list = XBL_ret_json["DisplayClaims"]["xui"][0]
+			XBL_ret_token_ush = XBL_ret_xui_list["uhs"]  # 获得user hash
+		except KeyError as KE:
+			print(XBL_ret_json)
+			raise CoreStartLoginError("XBL认证失败\n" + XBL_ret_json)
+		# XBL验证完毕,下面是XSTS
+		post_xsts_auth = {
+			"Properties": {
+				"SandboxId": "RETAIL",
+				"UserTokens": [
+					XBL_ret_token
+				]
+			},
+			"RelyingParty": "rp://api.minecraftservices.com/",
+			"TokenType": "JWT"
+		}
+
+		XSTS_login_token_get_link = "https://xsts.auth.xboxlive.com/xsts/authorize"
+		XSTS_head = XBL_head  # XSTS和XBL的请求头一致
+		post_xsts_auth_json = json.dumps(post_xsts_auth)  # 将字典转为json格式
+
+		r = requests.post(XSTS_login_token_get_link, data=post_xsts_auth_json, headers=XSTS_head)
+
+		XSTS_ret_json = json.loads(r.text)
+		try:
+			XSTSL_ret_token = XSTS_ret_json["Token"]
+			XSTS_ret_xui_list = XSTS_ret_json["DisplayClaims"]["xui"][0]
+			XSTS_ret_token_ush = XSTS_ret_xui_list["uhs"]  # 获得user hash,XSTS的.不过应该为空
+		except KeyError as KE:
+			print(KE)
+			raise CoreStartLoginError("XSTS认证失败\n" + XSTS_ret_json)
+
+		# XSTS令牌获得完毕,下一步得到启动令牌(accessToken for Minecraft)
+
+		login_with_xbox_or_MS_link = "https://api.minecraftservices.com/authentication/login_with_xbox"
+
+		post_Minecraft_auth_get_A_T = {
+			"identityToken": "XBL3.0 x={0};{1}".format(XBL_ret_token_ush, XSTSL_ret_token)
+		}
+
+		post_Minecraft_auth_get_A_T_json = json.dumps(post_Minecraft_auth_get_A_T)  # 将字典转为json格式
+		r = requests.post(login_with_xbox_or_MS_link, data=post_Minecraft_auth_get_A_T_json, headers=header)
+		Minecraft_AccessToken_json = json.loads(r.text)
+		try:
+			MinecraftAccessToken = Minecraft_AccessToken_json["access_token"]
+		except KeyError as KE:
+			print(KE)
+			raise CoreStartLoginError("获取MinecraftAccessToken时出现错误,可能是XSTS令牌过期")
+
+		# 查看该用户是否拥有Minecraft
+		header_Minecraft = {
+			"cookie": cookie,
+			"Authorization": "Bearer {}".format(MinecraftAccessToken),
+			"Accept": "application/json",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Accept-Language": "zh-CN,zh;q=0.9",
+			"Connection": "keep-alive",
+			"Content-Type": "application/json",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"
+		}
+		Minecraft_have_Y_N_link = "https://api.minecraftservices.com/entitlements/mcstore"
+		r = requests.get(Minecraft_have_Y_N_link, headers=header_Minecraft)
+		print(r.text)
+
+		uuid_get_link = "https://api.minecraftservices.com/minecraft/profile"
+		r = requests.get(uuid_get_link, headers=header_Minecraft)
+		print(r.text)
+		uuid_name_json = r.json()
+		try:
+			uuid_MS_xbox = uuid_name_json["id"]
+			name_MS_xbox = uuid_name_json["name"]
+		except KeyError as KE:
+			raise CoreStartLoginError("账号验证错误:没有Minecraft(uuid/name)")
+
+		ReturnDict = {"name_MS_xbox": name_MS_xbox, "uuid_MS_xbox": uuid_MS_xbox, "MinecraftAccessToken": MinecraftAccessToken, "MS_T_back_R_T": MS_T_back_R_T}
+		return ReturnDict
 
 
 # print(r.text)
