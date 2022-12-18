@@ -1417,9 +1417,19 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 
 		for library_download_farbric in library_download_list:
 			try:
-				if library_download_farbric["url"] == "https://maven.fabricmc.net/":
-					library_download_farbric = library_download_farbric["name"]
-					temp_2 = temp_2 + (os.path.join(lib_path, (library_download_farbric.replace("/", "\\").replace(":", "\\")) + ".jar;"))
+				if library_download_farbric["url"] == "https://maven.fabricmc.net/":		# 判断是否是fabric的lib
+					library_download_farbric = library_download_farbric["name"]		# 获取name
+					library_download_farbric_jar_name_place =  library_download_farbric.find(":")		# 保存“:” 号第一次出现的位置
+					library_download_farbric_jar_name = library_download_farbric[library_download_farbric_jar_name_place+1:]
+					logger.debug("library_farbric_jar_name:{}".format(library_download_farbric_jar_name))
+					if "net" not in library_download_farbric:
+						# 分两种情况,这里处理的是类似 "name": "net.fabricmc:access-widener:2.1.0"这样的name
+						temp_2 = temp_2 + (os.path.join(lib_path, ((library_download_farbric.replace("/", "\\").replace(":", "\\")).replace(".", "\\", 2)), library_download_farbric_jar_name.replace(":", "-") + ".jar;"))		# 进行格式化字符串并添加到lib暂存区
+
+					else:
+						# 分两种情况,这里处理的是类似 "name": "org.ow2.asm:asm:9.3" 这样的name
+						temp_2 = temp_2 + (os.path.join(lib_path, ((library_download_farbric.replace("/", "\\").replace(":", "\\")).replace(".", "\\", 1)), library_download_farbric_jar_name.replace(":", "-") + ".jar;"))		# 进行格式化字符串并添加到lib暂存区
+
 			except KeyError as eke:
 				pass
 
