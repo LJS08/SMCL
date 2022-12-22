@@ -926,13 +926,13 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 			print(get_browser_path("chrome"))
 			try:
 				s = selenium.webdriver.chrome.service.Service("E:\Downloads\chromedriver_win32\chromedriver.exe")  # get_browser_path("chrome"))
-			 	driver = webdriver.Chrome(service=s)
-			 	driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
-			 	while "code=" not in driver.current_url:
-			 		back_url = driver.current_url
+				driver = webdriver.Chrome(service=s)
+				driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
+				while "code=" not in driver.current_url:
+					back_url = driver.current_url
 			except:
-			 	logger.error("此版本不支持除Chrome外的其他浏览器")
-			 	raise CoreStartLoginError("浏览器错误:浏览器不受支持")
+				logger.error("此版本不支持除Chrome外的其他浏览器")
+				raise CoreStartLoginError("浏览器错误:浏览器不受支持")
 
 			try:
 				back_url_code_place = back_url.find("code=")
