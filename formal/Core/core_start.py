@@ -1,10 +1,9 @@
 from alive_progress import alive_bar
 import constant as const  # 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from email.message import EmailMessage
 import hashlib
+import importlib
 import json
-import logging
 from loguru import logger
 import multiprocessing
 import os
@@ -17,17 +16,14 @@ from selenium.webdriver.chrome.service import Service as CService
 import threading
 import time
 import uuid
-import zipfile
-import webbrowser
-import importlib
-import webbrowser
 import winreg
-
+import zipfile
 
 logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
 
 
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
+
 
 class _CheckVersionError(Exception):
 	def __init__(self, message):
@@ -35,9 +31,9 @@ class _CheckVersionError(Exception):
 
 
 def _Check_versions_in(CV_version_name):
-	i = 0
-	'''此函数用来分解版本字符串,内部版本'''
+	"""此函数用来分解版本字符串,内部版本"""
 
+	i = 0
 	# 看起来是不是很熟悉?其实这个是从Update_Main.py直接copy来的
 
 	version_name_split = []
@@ -61,7 +57,8 @@ def _Check_versions_in(CV_version_name):
 
 
 def calc_divisional_range(filesize, chuck=10):
-	# 被弃用
+	"""被弃用,5个提交后添加崩溃报告"""
+	# 被弃用,5个提交后添加崩溃报告
 	step = filesize // chuck
 	arr = list(range(0, filesize, step))
 	result = []
@@ -76,6 +73,7 @@ def calc_divisional_range(filesize, chuck=10):
 
 
 def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
+	"""被弃用,5个提交后添加崩溃报告"""
 	# 被弃用
 	headers = {"Range": f"bytes={s_pos}-{e_pos}"}
 	res = requests.get(url, headers=headers, stream=True)
@@ -100,6 +98,7 @@ def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 
 
 def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
+	"""被弃用,5个提交后添加崩溃报告"""
 	res = requests.head(file_url)
 	filesize = int(res.headers['Content-Length'])
 	divisional_ranges = calc_divisional_range(filesize)
@@ -114,7 +113,7 @@ def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
 
 
 def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
-	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件。多线程下载（新）"""
+	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件。多线程下载（新）被弃用,5个提交后添加崩溃报告"""
 	# 老版单线程改名为_downloads_file_urls,传参不变
 	e = threading.Event()
 
@@ -126,8 +125,7 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 		# 传递头，表明分段下载
 		with requests.get(file_url, stream=True, headers=headers) as downloads_file_url_response:
 			pos = start  # 文件指针就等于（pos）开始（start)
-			for i in downloads_file_url_response.iter_content(chunk_size=1024,
-															  decode_unicode=True):  # 设置每次传输的大小r.content.decode(r.apparent_encoding)
+			for i in downloads_file_url_response.iter_content(chunk_size=1024, decode_unicode=True):  # 设置每次传输的大小r.content.decode(r.apparent_encoding)
 				if i:  # 判断是否为空数据
 					# decoded_i = i.decode('utf-8')	 # 将i转码（没用到）
 					try:
@@ -144,7 +142,7 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 								f.write(i)
 								lock.release()  # 释放使用权
 						else:
-							raise CoreBootstrapMainError("错误, 无法找到文件")
+							raise CoreBootstrapMainError(f"错误, 无法找到文件:{es}")
 
 				pos = pos + 1024  # 自增
 		e.set()
@@ -172,43 +170,7 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 			e.wait()
 			thread.join()
 
-
-def _downloads_hash_bugs(link_downloads_assets, Max_try, file_dir, downloads_file_url_where, back_dir, file_path_name,
-						 hash_need_mode, sha1_objects_else, hash_asserts_json_objects_hash_name):
-	"""
-	temp_link_downloads_assets是像http://resources.download.minecraft.net/的。
-	Max_try 是最大尝试次数。
-	file_dir 需要验证的文件所在的文件夹
-	downloads_file_url_where 是下载参数
-	back_dir 回到的目录
-	file_path_name需要验证的文件所在的位置
-	hash_need_mode获得hash码的格式（字符串）（sha1,md5,sha256)
-	sha1_objects_else hash(外部算）
-	hash_asserts_json_objects_hash_name 应该的hash值
-	"""
-	bmcl_link = link_downloads_assets
-	hash_yn_too_many_try = 0
-	hash_yn = 1
-	while hash_yn == 0:
-		hash_yn_too_many_try = hash_yn_too_many_try + 1
-		if hash_yn_too_many_try >= 5:  # 如果验证失败超过五次那么就更改为官方源下载
-			print("mojang")  # debug
-			link_downloads_assets = "http://resources.download.minecraft.net/"  # temp_link_downloads_assets
-		if hash_yn_too_many_try >= Max_try:
-			raise CoreBootstrapMainError("验证资源文件时尝试次数过多")
-		print(hash_yn_too_many_try)  # debug
-		if hash_asserts_json_objects_hash_name == sha1_objects_else:
-			hash_yn = 1  # 如果hash正确就跳出循环
-		else:
-			os.chdir(file_dir)  # 到达应该下载的目录
-			_downloads_file_url(downloads_file_url_where)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-			sha1_objects_else = _hash_get_val(file_path_name,
-											  hash_need_mode)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
-			os.chdir(back_dir)  # 返回objects目录
-			print(sha1_objects_else)  # debug
-	link_downloads_assets = bmcl_link  # 恢复为原来使用的源
-	return "OK"
-
+# _downloads_hash_bugs已经被弃用,原因：无法正常被使用。现已经被集成进入multprocessing_task函数.此提醒将会在2个提交后删除。
 
 def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件（老版本）"""
@@ -231,7 +193,7 @@ def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 				f.close()
 			return "OK"
 		else:
-			raise CoreBootstrapMainError("错误, 无法找到文件")
+			raise CoreBootstrapMainError(f"错误, 无法找到文件:{e}")
 
 
 class CoreBootstrapMainError(Exception):
@@ -251,7 +213,7 @@ def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要
 		print("{}".format(PRINT_Things))
 		raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things, e))
 
-	except UnicodeDecodeError as UDE:
+	except UnicodeDecodeError:
 		try:
 			with open(read_json_file_src, mode='r') as f:
 				data = f.read(-1)
@@ -287,9 +249,7 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 	def _run():
 
 		while threads:
-
 			try:
-
 				task = tasks.pop(0)
 				print(task)
 				task_download_url = task["url"]
@@ -306,8 +266,7 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 					mupt_assets_objects_path = task["assets_objects_path"]
 
 					_downloads_file_url(task_download_url, task_need_src, task_need_mkfile)
-					sha1_objects_else = _hash_get_val(task_need_src,
-													  'sha1')  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
+					sha1_objects_else = _hash_get_val(task_need_src, 'sha1')  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
 					# 参考了没有1.12.json的操作中的验证hash步骤
 					# 修改了 返回的目录位置
 					# 使用封装后的下载函数
@@ -357,6 +316,8 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 		for thread in threads:
 			thread.join()
 
+
+link_downloads_launcher = ""
 
 def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 	global link_downloads_launcher
@@ -410,17 +371,16 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_maven = "https://maven.fabricmc.net"
 
 	if selfup:
-		# global running_src
 		running_src = os.getcwd()  # 获得当前工作目录
 		CPU_CORE = multiprocessing.cpu_count()
 
 		if os.path.isdir(os.path.join(mc_path, "versions", jar_version)):
-			print("客户端目录：存在")
+			logger.info("客户端目录：存在")
 			logger.info("客户端目录：存在{}".format(os.path.join(mc_path, "versions", jar_version)))
 		else:
-			print("客户端目录:不存在")
+			logger.info("客户端目录:不存在")
 			logger.info("客户端目录:不存在{}".format(os.path.join(mc_path, "versions", jar_version)))
-			print("正在创建")
+			logger.info("正在创建")
 			logger.info("正在创建:{}".format(os.path.join(mc_path, "versions", jar_version)))
 			os.chdir(os.path.join(mc_path, "versions"))
 			logger.debug("移动到:{}".format(os.path.join(mc_path, "versions")))
@@ -430,41 +390,37 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			logger.debug("返回工作目录:{}".format(running_src))
 
 		if os.path.isfile(os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar"):
-			print("主游戏文件:存在")
+			logger.info("主游戏文件:存在")
 			logger.info("主游戏文件:存在,{}".format((os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar")))
 		else:
-			print("主游戏文件:不存在")
+			logger.info("主游戏文件:不存在")
 			logger.info("主游戏文件:不存在,{}".format((os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar")))
-			print("正在下载,这可能需要一段时间")
+			logger.info("正在下载,这可能需要一段时间")
 			with alive_bar(len(range(100)), force_tty=True) as bar:  # 这里没卵用，主要是因为没开异步
 				for item in range(50):  # 遍历任务
 					bar()  # 显示进度
 					time.sleep(0.01)
 				bar()
-				_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/jar",
-									os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar", True)
+				_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/jar", os.path.join(mc_path, "versions", jar_version, jar_version) + ".jar", True)
 				for item in range(30):  # 遍历任务
 					bar()  # 显示进度
 					time.sleep(0.000001)
 				for item in range(19):  # 遍历任务
 					bar()  # 显示进度
 					time.sleep(0.1)
-			print("下载完毕")
+			logger.info("下载完毕")
 
 		if os.path.isfile(os.path.join(mc_path, "versions", jar_version, jar_version) + ".json"):
-			print("配置文档:存在")
+			logger.info("配置文档:存在")
 		else:
-			print("配置文档:不存在")
-			print("正在下载,这可能需要一段时间")
-			_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/json",
-								os.path.join(mc_path, "versions", jar_version, jar_version) + ".json",
-								True)  # 下载JSON配置文件
-			print("下载完毕")
+			logger.info("配置文档:不存在")
+			logger.info("正在下载,这可能需要一段时间")
+			_downloads_file_url(link_downloads_launcher + "version/" + jar_version + "/json", os.path.join(mc_path, "versions", jar_version, jar_version) + ".json", True)  # 下载JSON配置文件
+			logger.info("下载完毕")
 
-		print("正在预加载:配置文档")
-		start_json = _read_json_file((os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json"),
-									 "错误, 无法找到描述文件, 请检查您的安装", "预加载配置文档失败")
-		print("配置加载完毕")
+		logger.info("正在预加载:配置文档")
+		start_json = _read_json_file((os.path.join(mc_path, 'versions', jar_version, jar_version) + ".json"), "错误, 无法找到描述文件, 请检查您的安装", "预加载配置文档失败")
+		logger.info("配置加载完毕")
 
 		# 我早知道就不在这里用单独的部分了。。。
 
@@ -482,6 +438,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		downloads_artifact_url_inlib_list = []
 		downloads_lib_name = []
 		lib_path = os.path.join(mc_path, "libraries")
+		natives_path = os.path.join(mc_path, "versions", jar_version, "natives")
 		if run_time_environment == 'nt':
 			natives_path = os.path.join(mc_path, "versions", jar_version, "natives-windows-x86_64")
 		i = 0
@@ -494,7 +451,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 				pass
 			if temp.count(".") == 1 and i == 1:
 				pass
-			downloads_lib_name.append(t2.replace(":", "/"))
+			downloads_lib_name.append(t2.replace(":", "/"))  # t2可能在赋值前引用,注意
 			i = i + 1
 
 		for item in library_download_list:
@@ -526,7 +483,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 								downloads_natives_path_list.append(item["classifiers"]["natives-windows"]["path"])
 								downloads_natives_url_list.append(item["classifiers"]["natives-windows"]["url"])
 						except KeyError as KE:
-							print(KE)
+							logger.error(KE)
 
 					else:
 						downloads_natives_list.append(item["classifiers"])
@@ -542,12 +499,12 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						downloads_natives_path_list.append(item["downloads"]["classifiers"]["natives-windows"]["path"])
 						downloads_natives_url_list.append(item["downloads"]["classifiers"]["natives-windows"]["url"])
 				except KeyError as KE:
-					print(KE)
+					logger.error(KE)
 		# print(downloads_artifact_inlib_list)
 		# print(downloads_natives_list)		# 此列表被移除但未更改
 		# print(downloads_lib_name)
-		print(downloads_natives_path_list)
-		print(run_time_environment)
+		logger.debug(downloads_natives_path_list)
+		logger.debug(run_time_environment)
 		# 本来想把lib下载放在这里
 
 		assets_index_path = os.path.join(mc_path, "assets\\indexes\\")  # 拼接index文件夹路径
@@ -564,7 +521,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			sha1_json = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')
 			# 获得index中的1.12.json的hash(sha1)
 			if assets_Index_sh1 == sha1_json:  # 如果文件的sha1值正常
-				print("资源索引文件正常")  # 1.12.json
+				logger.info("资源索引文件正常")  # 1.12.json
 
 			else:
 				hash_yn = 0  # 重复了没有1.12.json的操作中的验证hash步骤
@@ -583,8 +540,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						with open(assets_Index_id + ".json", mode="wb+") as f:  # 写入
 							f.write(response.content)
 							f.close()
-						sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
-													   'sha1')  # 获得index中的1.12.json的hash(sha1)
+						sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
 						os.chdir(running_src)  # 返回程序运行时目录
 
 		else:  # 1.12.json不存在的情况
@@ -593,8 +549,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			with open(assets_Index_id + ".json", mode="wb+") as f:
 				f.write(response.content)
 				f.close()
-			sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
-										   'sha1')  # 获得index中的1.12.json的hash(sha1)
+			sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
 			hash_yn = 0  # 验证hash是否正确
 			hash_yn_too_many_try = 0
 			while hash_yn == 0:
@@ -610,8 +565,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					with open(assets_Index_id + ".json", mode="wb+") as f:
 						f.write(response.content)
 						f.close()
-					sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json",
-												   'sha1')  # 获得index中的1.12.json的hash(sha1)
+					sha1_json_else = _hash_get_val(assets_index_path + assets_Index_id + ".json", 'sha1')  # 获得index中的1.12.json的hash(sha1)
 					os.chdir(running_src)
 
 		# 下面就有1.12.json
@@ -631,15 +585,11 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		ret_read_json_val = _read_json_file(assets_index_path + assets_Index_id + ".json")
 		# 获得1.12.json文件中的内容并序列化为字典
 		os.chdir(running_src)  # 回去了 331
-		# with open('1.12.2(g).json', mode="w+") as f:
-		# f.write(json.dumps(start_json, indent=4, ensure_ascii=False))
-		# https://blog.csdn.net/weixin_30411455/article/details/114407713
-		# 可以自动格式化json，成为人能看懂的,而且带有缩进
 
 		asserts_json_objects = []
 		asserts_json_objects_item = []
 		asserts_json_objects_hash = []
-		print("正在获得资源名")
+		logger.info("正在获得资源名")
 		with alive_bar(len(range(1305)), force_tty=True) as bar:
 			for key, item in ret_read_json_val["objects"].items():  # 获得资源名
 				bar()
@@ -653,13 +603,12 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			asserts_json_objects_hash.append(list_hash["hash"])  # dict to list
 
 		os.chdir(assets_objects_path)  # 前往objects文件夹准备建立资源文件夹
-		print("正在检查资源文件")
+		logger.info("正在检查资源文件")
 		downloads_file_url_list = []
 		with alive_bar(len(range(1305)), force_tty=True) as bar:
 			for asserts_json_objects_hash_name in asserts_json_objects_hash:
 				if os.path.isdir(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2])):  # 资源文件夹是否存在
-					if os.path.isfile(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2],
-												   asserts_json_objects_hash_name)):
+					if os.path.isfile(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)):
 						# 资源文件是否存在
 						# 存在的话验证
 
@@ -697,16 +646,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 								hash_yn = 1  # 如果hash正确就跳出循环
 							else:
 								os.chdir(asserts_json_objects_hash_name[0:2])  # 到达应该下载的目录
-								_downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[
-																			0:2] + "/" + asserts_json_objects_hash_name,
-													(os.path.join(assets_objects_path,
-																  asserts_json_objects_hash_name[0:2],
-																  asserts_json_objects_hash_name)),
-													True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-								sha1_objects_else = _hash_get_val((os.path.join(assets_objects_path,
-																				asserts_json_objects_hash_name[0:2],
-																				asserts_json_objects_hash_name)),
-																  "sha1")  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
+								_downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name, (os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2],asserts_json_objects_hash_name)), True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
+								sha1_objects_else = _hash_get_val((os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), "sha1")  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。  # 获得objects中的资源文件的hash(sha1)
 								os.chdir(assets_objects_path)  # 返回objects目录
 								print(sha1_objects_else)  # debug
 						link_downloads_assets = bmcl_link  # 恢复为原来使用的源
@@ -717,7 +658,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						downloads_file_url_list.append(
 							{
 							"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name),
-							"path": (os.path.join(assets_objects_path,asserts_json_objects_hash_name[0:2],asserts_json_objects_hash_name)),
+							"path": (os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)),
 							"hash": asserts_json_objects_hash_name,
 							"mkfile": True,
 							"hash-check": True,
@@ -762,10 +703,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					os.mkdir(asserts_json_objects_hash_name[0:2])
 					# 下面这段直接使用了上面有资源文件夹时下载的步骤
 					# _downloads_file_url(link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name, os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), True)  # emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性。。。
-					downloads_file_url_list.append({"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name), "path": (os.path.join(assets_objects_path,
-																		  asserts_json_objects_hash_name[0:2],
-																		  asserts_json_objects_hash_name)),
-													"hash": asserts_json_objects_hash_name, "mkfile": True})
+					downloads_file_url_list.append({"url": (link_downloads_assets + asserts_json_objects_hash_name[0:2] + "/" + asserts_json_objects_hash_name), "path": (os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name)), "hash": asserts_json_objects_hash_name, "mkfile": True})
 					# 上面这一大串构建了 "url":构造完毕的下载链接 ,"path":这里是路径,"mkfile":恒定为True
 					# sha1_objects_else = _hash_get_val(os.path.join(assets_objects_path, asserts_json_objects_hash_name[0:2], asserts_json_objects_hash_name), 'sha1')		# emm,由于最后面没有“/"但是这个是个文件就有些问题，我之前写对了，后来忘了这个特性,这就和下载一样，这个名字有点问题。。。
 					# print("s:", sha1_objects_else)		# debug
@@ -799,8 +737,8 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 		multprocessing_task(downloads_file_url_list, 32, True)
 		os.chdir(running_src)
-		print("资源文件验证完毕")
-		print("正在下载lib文件")
+		logger.info("资源文件验证完毕")
+		logger.info("正在下载lib文件")
 		# lib文件下载
 		i_2 = 0
 		with alive_bar(len(range(37)), force_tty=True) as bar:
@@ -857,13 +795,17 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			os.chdir(lib_path)
 		print("ok")
 
-		log4j2type = start_json["logging"]["client"]["type"]
-		log4j2 = log4j2type.replace("-", ".")
-		log4j2_download_url = start_json["logging"]["client"]["file"]["url"]
+		try:
+			log4j2type = start_json["logging"]["client"]["type"]
+			log4j2 = log4j2type.replace("-", ".")
+			log4j2_download_url = start_json["logging"]["client"]["file"]["url"]
+		except KeyError as KE:
+			logger.error("log4j2下载链接获取失败")
+			raise CoreBootstrapMainError("Install:log4j2下载链接获取失败")
+
 		if not os.path.exists(log4j2):
 			_downloads_file_url(log4j2_download_url, (os.path.join(mc_path, "versions", jar_version, log4j2)), True)
 		print("All Right")
-
 
 	else:
 		raise CoreBootstrapMainError("暂不支持")
@@ -925,7 +867,7 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 
 			print(get_browser_path("chrome"))
 			try:
-				s = selenium.webdriver.chrome.service.Service("E:\Downloads\chromedriver_win32\chromedriver.exe")  # get_browser_path("chrome"))
+				s = selenium.webdriver.chrome.service.Service("<your webdiver src>")  # get_browser_path("chrome"))
 				driver = webdriver.Chrome(service=s)
 				driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
 				while "code=" not in driver.current_url:
@@ -1265,10 +1207,8 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 # print(r.text)
 
 
-def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn=False,
-				  G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M",
-				  cph=None):  # java_path以后可以升个级作判断，自己检测Java
-	'''
+def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn=False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
+	"""
 		java_path:Java路径(字符串)(可以填写java)
 
 		mc_path:游戏目录（到.minecraft)
@@ -1294,7 +1234,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 		Xmx:最大分配内存(默认1024M)
 
 		cph:此位保留,无用处。不返回。可填None.
-	'''
+	"""
 
 	# java_path:Java路径（字符串）（可以填写java)
 	# mc_path:游戏目录（到.minecraft）
