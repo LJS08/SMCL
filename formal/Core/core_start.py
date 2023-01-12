@@ -1,3 +1,4 @@
+# Copyright © 2022-2023 LJS80 All Rights Reserved
 from alive_progress import alive_bar
 import constant as const  # 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -57,8 +58,8 @@ def _Check_versions_in(CV_version_name):
 
 
 def calc_divisional_range(filesize, chuck=10):
-	"""被弃用,5个提交后添加崩溃报告"""
-	# 被弃用,5个提交后添加崩溃报告
+	"""被弃用,4个提交后添加崩溃报告"""
+	# 被弃用,4个提交后添加崩溃报告
 	step = filesize // chuck
 	arr = list(range(0, filesize, step))
 	result = []
@@ -73,7 +74,7 @@ def calc_divisional_range(filesize, chuck=10):
 
 
 def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
-	"""被弃用,5个提交后添加崩溃报告"""
+	"""被弃用,4个提交后添加崩溃报告"""
 	# 被弃用
 	headers = {"Range": f"bytes={s_pos}-{e_pos}"}
 	res = requests.get(url, headers=headers, stream=True)
@@ -98,7 +99,7 @@ def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 
 
 def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
-	"""被弃用,5个提交后添加崩溃报告"""
+	"""被弃用,4个提交后添加崩溃报告"""
 	res = requests.head(file_url)
 	filesize = int(res.headers['Content-Length'])
 	divisional_ranges = calc_divisional_range(filesize)
@@ -113,7 +114,7 @@ def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
 
 
 def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
-	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件。多线程下载（新）被弃用,5个提交后添加崩溃报告"""
+	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件。多线程下载（新）被弃用,4个提交后添加崩溃报告"""
 	# 老版单线程改名为_downloads_file_urls,传参不变
 	e = threading.Event()
 
@@ -170,7 +171,7 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 			e.wait()
 			thread.join()
 
-# _downloads_hash_bugs已经被弃用,原因：无法正常被使用。现已经被集成进入multprocessing_task函数.此提醒将会在2个提交后删除。
+# _downloads_hash_bugs已经被弃用,原因：无法正常被使用。现已经被集成进入multprocessing_task函数.此提醒将会在1个提交后删除。
 
 def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件（老版本）"""
@@ -256,7 +257,7 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 				task_need_src = task["path"]
 				task_need_mkfile = task["mkfile"]
 				if task["hash-check"]:  # 检测hash-check位是否为True
-					logger.debug("新版下载时验证(多线程兼容版)")
+					logger.debug("使用新版下载时验证(多线程兼容版)")
 					# 以下是检查hash的多线程下载(受到GIL限制)
 
 					# 适应性变量声明区
@@ -451,7 +452,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 				pass
 			if temp.count(".") == 1 and i == 1:
 				pass
-			downloads_lib_name.append(t2.replace(":", "/"))  # t2可能在赋值前引用,注意
+			downloads_lib_name.append(t2.replace(":", "/"))  # t2可能在赋值前引用,注意。但无法复现
 			i = i + 1
 
 		for item in library_download_list:
@@ -795,6 +796,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			os.chdir(lib_path)
 		print("ok")
 
+		# 下面是log4j的下载
 		try:
 			log4j2type = start_json["logging"]["client"]["type"]
 			log4j2 = log4j2type.replace("-", ".")
@@ -1204,7 +1206,6 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 		return ReturnDict
 
 
-# print(r.text)
 
 
 def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn=False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
@@ -1690,10 +1691,13 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 		logger.critical("{}版本不支持Forge,无法下载".format(version_game))
 		CoreForgeInstallError("此版本不支持Forge!")
 
+	# 常量定义区
 	const.RUNNING_PATH = os.getcwd()
 	const.GAME_PATH = os.path.join(mc_path, 'versions', version_game)
 	const.FORGE_INSTALL_HEADLESS_PATH = "forge-installer-headless.jar"
 	const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH = "forge-install-bootstrapper.0.2.0.jar"
+	
+	# 此区域无实际意义,主要用于方便程序编写（让语法提示器正常工作）
 	game_path = const.GAME_PATH  # 指向const.GAME_PATH的指针(伪)
 	forge_install_headless_path = const.FORGE_INSTALL_HEADLESS_PATH  # 指向const.FORGE_INSTALL_HEADLESS_PATH的指针(伪)
 	forge_install_headless_BMCLAPI = const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH  # 指向const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH的指针(伪)
