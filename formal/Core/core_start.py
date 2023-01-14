@@ -1,6 +1,6 @@
 # Copyright © 2022-2023 LJS80 All Rights Reserved
 from alive_progress import alive_bar
-import constant as const  # 常量定义用
+import Core.constant as const  # 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import importlib
