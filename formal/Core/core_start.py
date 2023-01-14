@@ -9,15 +9,21 @@ from loguru import logger
 import multiprocessing
 import os
 import requests
+import re
 import sqlite3
 import sys
+import subprocess
 import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as CService
+from selenium.webdriver.edge.service import Service as EService
 import threading
 import time
 import uuid
 import winreg
+import xml
+import xml.dom.minidom
+import xmlrpc
 import zipfile
 
 logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
@@ -257,7 +263,7 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 				task_need_src = task["path"]
 				task_need_mkfile = task["mkfile"]
 				if task["hash-check"]:  # 检测hash-check位是否为True
-					logger.debug("使用新版下载时验证(多线程兼容版)")
+					logger.debug("新版下载时验证(多线程兼容版)")
 					# 以下是检查hash的多线程下载(受到GIL限制)
 
 					# 适应性变量声明区
@@ -842,6 +848,51 @@ def get_browser_path(browser):
 	return value.split(',')[0]
 
 
+def browser_init():
+	running_src = os.getcwd()
+	edge_src = ""
+	for item in get_browser_path("edge").split(os.sep):
+		if item != "msedge.exe":
+			edge_src = os.path.join(edge_src, item)
+
+	print(edge_src)
+
+	dom = xml.dom.minidom.parse(os.path.join(edge_src, "msedge.VisualElementsManifest.xml"))  	# 读取edge文件夹下面的xml文件(包含版本信息)
+	dom_ele = dom.documentElement
+	ve = dom_ele.getElementsByTagName('VisualElements')
+	ve_text = ve[0].toxml()  # 包含版本号的字符串文本
+	rematch = re.match(r'(.*)\"(.*)\\VisualElements\\Logo.png', ve_text)
+	edge_version = rematch.group(2)  # 匹配得到版本号
+	print(edge_version)
+	url = "https://msedgedriver.azureedge.net/{}/edgedriver_win64.zip".format(edge_version)
+	r = requests.get(url)
+
+	temp_src = os.getenv("TEMP")
+	file_name = "{}_edgedriver_win64.zip".format(edge_version)
+	file_src = os.path.join(temp_src, file_name)
+	os.chdir(temp_src)
+	temp_dir_name = "SMCL_{}".format(str(time.time()))
+	os.mkdir(temp_dir_name)
+	os.chdir(temp_dir_name)
+
+	# time.time_ns() ?
+
+	with open(file_name, mode="wb+") as f:
+		f.write(r.content)
+		f.close()
+
+	try:
+		with zipfile.ZipFile(file_name, mode="r") as archive:
+			archive.extractall("{}_edgedriver_win64".format(edge_version))
+			archive.close()
+	except zipfile.BadZipFile as zBZ:
+		print(zBZ, "解压失败")
+
+	os.chdir(running_src)
+	return os.path.join(temp_dir_name, "{}_edgedriver_win64".format(edge_version), "msedgedriver.exe")
+	#env = os.environ
+	#print(env["LOCALAPPDATA"])		# 可获得local appdata的路径
+
 def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=False, MS_login=False, back_url: str = None, Mojang_login=False):
 	"""
 	Refresh_Token:更新AccessToken令牌
@@ -867,18 +918,21 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 	if Mojang_MS_login:
 		if MS_login:
 
-			print(get_browser_path("chrome"))
+			webdiver_src = browser_init()
 			try:
-				s = selenium.webdriver.chrome.service.Service("<your webdiver src>")  # get_browser_path("chrome"))
-				driver = webdriver.Chrome(service=s)
+				s = selenium.webdriver.edge.service.Service(webdiver_src)  # get_browser_path("chrome"))
+				#driver = webdriver.Chrome(service=s)
+				driver = webdriver.Edge(service=s)
 				driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
 				while "code=" not in driver.current_url:
 					back_url = driver.current_url
-			except:
+				back_url = driver.current_url
+			except Exception:
 				logger.error("此版本不支持除Chrome外的其他浏览器")
 				raise CoreStartLoginError("浏览器错误:浏览器不受支持")
 
 			try:
+				print(back_url)
 				back_url_code_place = back_url.find("code=")
 				back_url_code_place_end = back_url.find("&")
 				back_url = back_url[back_url_code_place + 5:back_url_code_place_end]
@@ -1206,8 +1260,6 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 		return ReturnDict
 
 
-
-
 def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, launcher_name_version, uuid_yn=False, G1NewSizePercent_size="20", G1ReservePercent_size="20", Xmn="128m", Xmx="1024M", cph=None):  # java_path以后可以升个级作判断，自己检测Java
 	"""
 		java_path:Java路径(字符串)(可以填写java)
@@ -1256,6 +1308,28 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 	# Xmx:最大分配内存（默认1024M)
 	# cph:此位保留，无用处。不返回。可填None.
 	# 这个版本还在写，仅为测试版本。原版启动正常，forge启动有问题。
+	# forge完成(补了一下，之前写完后忘了加)
+	if os.name == "nt":		# 如果平台为Windows，则执行添加双引号的操作
+		temp_mc_path = ""		# 设置一个temp变量
+		java_path = '"{}"'.format(java_path)		# 将java_path重新赋值为修改后的java_path
+		if " " in mc_path:  # mc_path里面是否有空格?
+			# split_mc_path = mc_path.split(os.sep)		# 分割mc_path(用os.sep可以防止平台间的路径分隔符不同带来的问题)
+			# i_f_m_p = 0
+			# for item in split_mc_path:
+			# 	if " " in item:		# 如果item里面有空格
+			# 		if i_f_m_p == 0:
+			# 			item = '{0}"{1}"'.format(os.sep, item)
+			# 		else:
+			# 			item = '"{}"'.format(item)
+			#
+			# 	temp_mc_path = os.path.join(temp_mc_path, item)  # 将分割后的路径重新拼回去
+
+			# mc_path = temp_mc_path
+			#mc_path = '"{}"'.format(mc_path)
+			print(mc_path)
+			#del temp_mc_path  # 解除占用（真的有必要吗？）
+			#del split_mc_path  # 解除占用（真的有必要吗？）
+
 	assets_index_path = os.path.join(mc_path, "assets")
 	client_jar_path = os.path.join(mc_path, 'versions', launcher_name)
 	launcher_version = launcher_name  # 这两个值相同
@@ -1380,7 +1454,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			os.popen(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1400,7 +1474,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			os.popen(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1526,7 +1600,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			os.popen(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1546,7 +1620,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1569,7 +1643,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			os.popen(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1589,7 +1663,7 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.system(temp_2 + temp_3)
+			os.popen(temp_2 + temp_3)
 			if uuid_yn:
 				return "ok", temp_2 + temp_3
 			else:
@@ -1696,7 +1770,7 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 	const.GAME_PATH = os.path.join(mc_path, 'versions', version_game)
 	const.FORGE_INSTALL_HEADLESS_PATH = "forge-installer-headless.jar"
 	const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH = "forge-install-bootstrapper.0.2.0.jar"
-	
+
 	# 此区域无实际意义,主要用于方便程序编写（让语法提示器正常工作）
 	game_path = const.GAME_PATH  # 指向const.GAME_PATH的指针(伪)
 	forge_install_headless_path = const.FORGE_INSTALL_HEADLESS_PATH  # 指向const.FORGE_INSTALL_HEADLESS_PATH的指针(伪)
@@ -1766,13 +1840,13 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 			if forge_install_headless_type == "FIHL_xfl03":
 				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path)))
 				logger.info("正在进行安装,这可能需要一段时间")
-				os.system('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
+				os.popen('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
 
 			elif forge_install_headless_type == "BMCLAPI":
 
 				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path)))
 				logger.info("正在进行安装,这可能需要一段时间")
-				os.system('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path))
+				os.popen('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path))
 		else:
 
 			logger.error("暂不支持版本隔离模式")
