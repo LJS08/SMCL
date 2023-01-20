@@ -1529,11 +1529,18 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.popen(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 		else:
 			for downloads_artifact_inlib in downloads_artifact_inlib_list:
@@ -1549,11 +1556,18 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.popen(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 	elif start_json["mainClass"] == "cpw.mods.modlauncher.Launcher":
 		argument_forge = []  # forge
@@ -1675,11 +1689,18 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.popen(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 		else:
 			for downloads_artifact_inlib in downloads_artifact_inlib_list:
@@ -1697,9 +1718,16 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 " --height 480"
 			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 	elif start_json["mainClass"] == "net.minecraft.launchwrapper.Launch":
 
@@ -1718,11 +1746,18 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.popen(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 		else:
 			for downloads_artifact_inlib in downloads_artifact_inlib_list:
@@ -1738,11 +1773,18 @@ def core_start_IN(java_path, mc_path, launcher_name, username, uuid_val, aT, lau
 					 ' --versionType ' + launcher_name_self + \
 					 " --width 854" + \
 					 " --height 480"
-			os.popen(temp_2 + temp_3)
+			subprocess.run(temp_2 + temp_3)
 			if uuid_yn:
-				return "ok", temp_2 + temp_3
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return return_IN_list
 			else:
-				return "ok", temp_2 + temp_3, launcher_uuid
+				return_IN_list = []
+				return_IN_list.append("ok")
+				return_IN_list.append((temp_2 + temp_3))
+				return_IN_list.append(launcher_uuid)
+				return return_IN_list
 
 
 def core_Get_Version_list(list_type, link_type, SVONLY=None):
