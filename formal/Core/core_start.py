@@ -240,14 +240,23 @@ def _encrypt(fpath: str, algorithm: str) -> str:  # https://blog.csdn.net/qq_429
 		return hashlib.new(algorithm, f.read()).hexdigest()
 
 
-def _hash_get_val(hash_file_src, hash_need_type):
-	'''hash_need_type是想要得到的hash值的类型(字符串)，只有sha1,sha256.md5.hash_file_src是需要得到hash值的文件的路径（字符串）'''
-	for algorithm in ('md5', 'sha1', 'sha256'):  # https://blog.csdn.net/qq_42951560/article/details/125080544
-		hexdigest = _encrypt(hash_file_src, algorithm)
-		# print(f'{algorithm}: {hexdigest}')
-		# 第一次为MD5，第二次为sha1,第三次为sha256
-		if algorithm == hash_need_type:
-			return hexdigest
+def _hash_get_val(hash_file_src, hash_need_type, hash_mode = "file"):
+	'''hash_need_type是想要得到的hash值的类型(字符串)，只有sha1,sha256.md5.hash_file_src是需要得到hash值的文件的路径（字符串）(当hash_mode为str时为需要得到hash值的文本)，hash_mode是生成hash的模式'''
+	if hash_mode == "file":
+		for algorithm in ('md5', 'sha1', 'sha256'):  # https://blog.csdn.net/qq_42951560/article/details/125080544
+			hexdigest = _encrypt(hash_file_src, algorithm)
+			# print(f'{algorithm}: {hexdigest}')
+			# 第一次为MD5，第二次为sha1,第三次为sha256
+			if algorithm == hash_need_type:
+				return hexdigest
+
+	elif hash_mode == "str":
+		for algorithm in ('md5', 'sha1', 'sha256'):  # https://blog.csdn.net/qq_42951560/article/details/125080544
+			hexdigest = hashlib.new(algorithm, hash_file_src.encode()).hexdigest()
+			# print(f'{algorithm}: {hexdigest}')
+			# 第一次为MD5，第二次为sha1,第三次为sha256
+			if algorithm == hash_need_type:
+				return hexdigest
 
 
 def multprocessing_task(tasks, cores: int, join: bool = True):
@@ -326,6 +335,7 @@ def multprocessing_task(tasks, cores: int, join: bool = True):
 
 link_downloads_launcher = ""
 
+
 def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 	global link_downloads_launcher
 	if link_type == "mojang" or link_type is None:  # 使用mojang api
@@ -377,7 +387,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 		link_downloads_fabric_meta = "https://meta.fabricmc.net"
 		link_downloads_maven = "https://maven.fabricmc.net"
 
-	if selfup:
+	if selfup:		# 命令启动模式
 		running_src = os.getcwd()  # 获得当前工作目录
 		CPU_CORE = multiprocessing.cpu_count()
 
@@ -815,7 +825,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 			_downloads_file_url(log4j2_download_url, (os.path.join(mc_path, "versions", jar_version, log4j2)), True)
 		print("All Right")
 
-	else:
+	else:		# GUI模式
 		raise CoreBootstrapMainError("暂不支持")
 
 
@@ -845,19 +855,39 @@ def get_browser_path(browser):
 	except FileNotFoundError:
 		return None
 	value, _type = winreg.QueryValueEx(key, "")
+	print(value.split(',')[0])
 	return value.split(',')[0]
 
 
 def browser_init():
-	running_src = os.getcwd()
-	edge_src = ""
-	for item in get_browser_path("edge").split(os.sep):
-		if item != "msedge.exe":
-			edge_src = os.path.join(edge_src, item)
+	edge_bit = True
+	try:
+		key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\Clients\StartMenuInternet")
+	except FileNotFoundError:
+		return None
+	value, _type = winreg.QueryValueEx(key, "")
 
+	driver_name = ""
+	unzip_name = ""
+	url = ""
+	file_name = ""
+	webbrowser_name = ""
+	ret_list = []
+
+	# if "IE" in value.split(',')[0]:
+	# 	url = "https://github.com/SeleniumHQ/selenium/releases/download/selenium-4.7.0/IEDriverServer_Win32_4.7.0.zip"
+	# 	file_name = "IEDriverServer_Win32_4.7.0.zip"
+	# 	unzip_name = "IEDriverServer_Win32_4.7.0"
+	# 	driver_name = "IEDriverServer.exe"
+	# 	webbrowser_name = "IE"
+
+	running_src = os.getcwd()
+
+	edge_src = get_browser_path("edge").replace(get_browser_path("edge").split(os.sep)[-1], "")
 	print(edge_src)
 
-	dom = xml.dom.minidom.parse(os.path.join(edge_src, "msedge.VisualElementsManifest.xml"))  	# 读取edge文件夹下面的xml文件(包含版本信息)
+	dom = xml.dom.minidom.parse(
+		os.path.join(edge_src, "msedge.VisualElementsManifest.xml"))  # 读取edge文件夹下面的xml文件(包含版本信息)
 	dom_ele = dom.documentElement
 	ve = dom_ele.getElementsByTagName('VisualElements')
 	ve_text = ve[0].toxml()  # 包含版本号的字符串文本
@@ -865,10 +895,42 @@ def browser_init():
 	edge_version = rematch.group(2)  # 匹配得到版本号
 	print(edge_version)
 	url = "https://msedgedriver.azureedge.net/{}/edgedriver_win64.zip".format(edge_version)
-	r = requests.get(url)
+	file_name = "{}_edgedriver_win64.zip".format(edge_version)
+	unzip_name = "{}_edgedriver_win64".format(edge_version)
+	driver_name = "msedgedriver.exe"
+	webbrowser_name = "Edge"
+
+	if "Edge" in value.split(',')[0]:
+		edge_src = get_browser_path("edge").replace(get_browser_path("edge").split(os.sep)[-1], "")
+		print(edge_src)
+
+		dom = xml.dom.minidom.parse(os.path.join(edge_src, "msedge.VisualElementsManifest.xml"))  	# 读取edge文件夹下面的xml文件(包含版本信息)
+		dom_ele = dom.documentElement
+		ve = dom_ele.getElementsByTagName('VisualElements')
+		ve_text = ve[0].toxml()  # 包含版本号的字符串文本
+		rematch = re.match(r'(.*)\"(.*)\\VisualElements\\Logo.png', ve_text)
+		edge_version = rematch.group(2)  # 匹配得到版本号
+		print(edge_version)
+		url = "https://msedgedriver.azureedge.net/{}/edgedriver_win64.zip".format(edge_version)
+		file_name = "{}_edgedriver_win64.zip".format(edge_version)
+		unzip_name = "{}_edgedriver_win64".format(edge_version)
+		driver_name = "msedgedriver.exe"
+		webbrowser_name = "Edge"
+
+	if "Firefox" in value.split(',')[0] or "FIREFOX.EXE" in value.split(','):
+		url = "https://github.com/mozilla/geckodriver/releases/download/v0.32.0/geckodriver-v0.32.0-win32.zip"
+		file_name = "geckodriver-v0.32.0-win32.zip"
+		unzip_name = "geckodriver-v0.32.0-win32"
+		driver_name = "geckodriver.exe"
+		webbrowser_name = "Firefox"
+
+	try:
+		r = requests.get(url)
+	except requests.exceptions.SSLError as RESE:
+		print(RESE)
+		r = requests.get(url, verify=False)
 
 	temp_src = os.getenv("TEMP")
-	file_name = "{}_edgedriver_win64.zip".format(edge_version)
 	file_src = os.path.join(temp_src, file_name)
 	os.chdir(temp_src)
 	temp_dir_name = "SMCL_{}".format(str(time.time()))
@@ -883,13 +945,18 @@ def browser_init():
 
 	try:
 		with zipfile.ZipFile(file_name, mode="r") as archive:
-			archive.extractall("{}_edgedriver_win64".format(edge_version))
+			archive.extractall(unzip_name)
 			archive.close()
 	except zipfile.BadZipFile as zBZ:
 		print(zBZ, "解压失败")
 
 	os.chdir(running_src)
-	return os.path.join(temp_dir_name, "{}_edgedriver_win64".format(edge_version), "msedgedriver.exe")
+
+	ret_list.append(os.path.join(temp_dir_name, unzip_name, driver_name))
+	ret_list.append(webbrowser_name)
+	ret_list.append(temp_dir_name)
+
+	return ret_list
 	#env = os.environ
 	#print(env["LOCALAPPDATA"])		# 可获得local appdata的路径
 
@@ -918,11 +985,19 @@ def core_start_Login(Refresh_Token, refresh_token_str=None, Mojang_MS_login=Fals
 	if Mojang_MS_login:
 		if MS_login:
 
-			webdiver_src = browser_init()
+			browser_init_list = browser_init()
+			webdiver_src = browser_init_list[0]
 			try:
-				s = selenium.webdriver.edge.service.Service(webdiver_src)  # get_browser_path("chrome"))
+				driver = None
+				if browser_init_list[1] == "Edge":
+					s = selenium.webdriver.edge.service.Service(webdiver_src)  # get_browser_path("chrome"))
+					driver = webdriver.Edge(service=s)
+
+				elif browser_init_list[1] == "Firefox":
+					s = selenium.webdriver.edge.service.Service(webdiver_src)
+					driver = webdriver.Edge(service=s)
+
 				#driver = webdriver.Chrome(service=s)
-				driver = webdriver.Edge(service=s)
 				driver.get("https://login.live.com/oauth20_authorize.srf?client_id=00000000402b5328&response_type=code&scope=service%3A%3Auser.auth.xboxlive.com%3A%3AMBI_SSL&redirect_uri=https%3A%2F%2Flogin.live.com%2Foauth20_desktop.srf")
 				while "code=" not in driver.current_url:
 					back_url = driver.current_url
@@ -1678,12 +1753,22 @@ SVONLY: You don't need to care about it.It's useless to you.
 	"""
 
 	release_list = []
-	if link_type == "BMCLAPI":
-		link_get_version_list = "https://bmclapi2.bangbang93.com/mc/game/version_manifest.json"
+	if link_type == "BMCLAPI" or "Latest":
+		link_get_version_list = "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json"
 	else:
-		pass
+		link_get_version_list = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
 
 	r = requests.get(link_get_version_list)
+	if link_type == "Latest" and link_get_version_list == "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json":
+		# 判断bmclapi是不是最新的(默认mojang的是最新的)
+		r2 = requests.get("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")
+		r_hash = _hash_get_val(r.text, "sha1", "str")
+		r2_hash = _hash_get_val(r2.text, "sha1", "str")
+		if not r2_hash == r_hash:
+			logger.info(r_hash)
+			logger.info(r2_hash)
+			r = r2
+
 	version_json_v1 = r.json()
 
 	if list_type == "LTS" or list_type == "release":
