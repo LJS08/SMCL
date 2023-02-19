@@ -11,5 +11,11 @@ if __name__ == "__main__":
     game_dir = os.getcwd()
     game_dir = os.path.join(game_dir, ".minecraft")
     Core.config.write(dotmc = game_dir)
-    View.main.main_page(os.path.dirname(__file__))
+    console_check = False
+    if "-dev-console" in sys.argv:
+        Console.console_main.Consoles()
+        console_check = True
+    
+    if not console_check:
+        View.main.main_page(os.path.dirname(__file__))
     
