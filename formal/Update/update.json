@@ -1,1 +1,40 @@
 {"latest_vesion": "0.0.1", "dev-version": "0.0.1", "update-dev": {"downloads": {"url": "None", "name": "SMCL.exe", "hash": "None"}}}
+{
+	"latest_version": "0.0.0",
+    "update-dev": {
+		"downloads": {
+			"url": "None",
+			"name": "SMCL-0.0.1.exe",
+			"hash": "None"
+		},
+	"dev-version": "0.0.1",
+	"update-dev": {
+		"downloads": {
+			"url": "None",
+			"name": "SMCL-dev-0.0.1.exe",
+			"hash": "None"
+		}
+	},
+	"versions": [
+		{
+			"versions": "0.0.0",
+			"download": {
+				"url": "https://gitee.com/ljs80/smcl/raw/master/formal/Update/update.json",
+				"github-url": "https://raw.githubusercontent.com/LJS08/SMCL/master/formal/Update/update.json",
+				"name": "SMCL-0.0.0.exe",
+				"hash": "None"
+			}
+		}
+	],
+    "dev-versions": [
+		{
+			"versions": "0.0.1",
+			"download": {
+				"url": "https://gitee.com/ljs80/smcl/raw/master/formal/Update/update.json",
+				"github-url": "https://raw.githubusercontent.com/LJS08/SMCL/master/formal/Update/update.json",
+				"name": "SMCL-dev-0.0.1.exe",
+				"hash": "None"
+			}
+		}
+	]
+			}
