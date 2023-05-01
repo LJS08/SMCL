@@ -17,6 +17,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as CService
 from selenium.webdriver.edge.service import Service as EService
+import tempfile
 import threading
 import time
 import uuid
@@ -28,6 +29,7 @@ import zipfile
 
 logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
 
+lock = threading.Lock()  # 初始化锁
 
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
 
@@ -63,23 +65,53 @@ def _Check_versions_in(CV_version_name):
 	return CV_version_num
 
 
-def calc_divisional_range(filesize, chuck=10):
-	"""被弃用,4个提交后添加崩溃报告"""
+def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
+	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件（老版本）"""
+	# 新版为_downloads_file_url多线程下载
+	# 老版（改名了）(原名：_downloads_file_url）
+	#
+	# file_url 是链接地址
+	# downloads_file_url_src 文件地址
+	# mkfile 传参，在没有这个文件时决定是否创建此文件
+	# 还是单线程稳定。。。
+	downloads_file_url_response = requests.get(file_url)
+	try:
+		with open(downloads_file_url_src, mode="wb") as f:
+			f.write(downloads_file_url_response.content)
+			f.close()
+	except FileNotFoundError as e:
+		if mkfile:
+			with open(downloads_file_url_src, mode="wb+") as f:
+				f.write(downloads_file_url_response.content)
+				f.close()
+			return "OK"
+		else:
+			raise CoreBootstrapMainError(f"错误, 无法找到文件:{e}")
+
+
+class CoreBootstrapMainError(Exception):
+	def __init__(self, message):
+		super().__init__(message)
+
+
+def calc_divisional_range(file_size: int, chuck=10) -> list:
+	"""
+	此函数用于将文件分块
+	file_size: 文件总大小
+	chuck: 块数
+	"""
 	# 被弃用,4个提交后添加崩溃报告
-	step = filesize // chuck
-	arr = list(range(0, filesize, step))
+	step = file_size // chuck
+	arr = list(range(0, file_size, step))
 	result = []
 	for i in range(len(arr) - 1):
 		s_pos, e_pos = arr[i], arr[i + 1] - 1
 		result.append([s_pos, e_pos])
-	result[-1][-1] = filesize - 1
+	result[-1][-1] = file_size - 1
 	return result
 
 
-# 下载方法
-
-
-def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
+def range_download_old(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 	"""被弃用,4个提交后添加崩溃报告"""
 	# 被弃用
 	headers = {"Range": f"bytes={s_pos}-{e_pos}"}
@@ -104,19 +136,197 @@ def range_download(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 			raise CoreBootstrapMainError("错误, 无法找到文件")
 
 
-def _downloads_file_urls(file_url, downloads_file_url_src, mkfile):
-	"""被弃用,4个提交后添加崩溃报告"""
-	res = requests.head(file_url)
-	filesize = int(res.headers['Content-Length'])
-	divisional_ranges = calc_divisional_range(filesize)
-	# 先创建空文件
-	with ThreadPoolExecutor() as p:
-		futures = []
-		for s_pos, e_pos in divisional_ranges:
-			print(s_pos, e_pos)
-			futures.append(p.submit(range_download, file_url, s_pos, e_pos, downloads_file_url_src, mkfile))
-		# 等待所有任务执行完毕
-		as_completed(futures)
+def range_download(start, end, file_url, downloads_file_fp, bar, temp_file_bit, mkfile):
+	headers = {
+		'Range': f'bytes={start}-{end}',
+	}
+	# 传递头，表明分段下载
+	pos = start  # 文件指针就等于（pos）开始（start)
+	logger.debug(f"pos={pos} start={start} end={end}")
+	tmp_file = False
+
+	with requests.get(file_url, stream=True, headers=headers) as downloads_file_url_response:
+		for item in downloads_file_url_response.iter_content(chunk_size=1024):  # 设置每次传输的大小r.content.decode(r.apparent_encoding)
+			if item:  # 判断是否为空数据
+				# decoded_i = i.decode('utf-8')	 # 将i转码（没用到）
+				try:
+					if temp_file_bit:		# 试验内容
+						lock.acquire()  # 获得使用权
+						downloads_file_fp.seek(pos, 0)
+						downloads_file_fp.write(item)
+						lock.release()  # 释放使用权
+
+					else:
+						while_write = False
+						while lock.locked():
+							if lock.locked() and not while_write:
+								tmp_file = tempfile.TemporaryFile()
+								tmp_file.seek(0)
+								tmp_file.write(item)
+								while_write = True
+								if lock.locked():
+									time.sleep(0.01)
+								else:
+									break
+
+							elif lock.locked() and while_write:
+								time.sleep(0.01)
+
+							elif not lock.locked():
+								break
+							else:
+								break
+
+						lock.acquire()  # 获得使用权
+						try:
+							if while_write:
+								with open(downloads_file_fp, mode="rb+") as f:
+									tmp_file.seek(0)
+									f.seek(pos, 0)
+									f.write(tmp_file.read())
+									tmp_file.close()
+
+							else:
+								with open(downloads_file_fp, mode="rb+") as f:
+									f.seek(pos, 0)
+									f.write(item)
+
+						except PermissionError as PE:
+							logger.error(PE)
+
+						except FileNotFoundError as FNFE:
+							raise FileNotFoundError(FNFE)
+
+						except Exception as E:
+							logger.error(E)
+
+						lock.release()  # 释放使用权
+
+				except FileNotFoundError as FNFE:
+					if tmp_file:
+						tmp_file.close()
+
+					if lock.locked():
+						lock.release()
+
+					logger.info("FileNotFound: {}}".format(FNFE))
+					if mkfile:
+						try:
+							lock.acquire()  # 获得使用权
+							with open(downloads_file_fp, mode="wb+") as f:
+								f.seek(pos)
+								f.write(item)
+								f.close()
+							lock.release()  # 释放使用权
+						except Exception as E:
+							logger.error(f"{E}")
+					else:
+						logger.error(f"错误, 无法找到文件:{FNFE}")
+						raise CoreBootstrapMainError(f"错误, 无法找到文件:{FNFE}")
+
+				except Exception as E:
+					if tmp_file:
+						tmp_file.close()
+					if lock.locked():
+						lock.release()
+
+					logger.error(E)
+
+			else:
+				logger.debug("空数据: \n {}".format(item))
+
+			pos = pos + 1024  # 自增
+		bar()
+
+
+def _range_downloads_file_url(file_url, downloads_file_fp, temp_file_bit=False, allow_redirect=False, ranges_check=False, force_download=False, mkfile=False):
+	"""
+	file_url: 需要下载的文件的链接
+	downloads_file_fp: 文件名（或者当temp_file_bit为True是应该为临时文件对象）
+	temp_file_bit: 是否写入到的是临时文件(默认为False)(当为True时，将会使用downloads_file_fp作为文件对象直接向临时文件写入)
+	allow_redirect: 是否允许重定向?(默认为False)(部分文件的下载链接可能为短链接, 实际上会经过重定向到下载文件。启用此选项有被攻击的风险, 可能会被恶意重定向)
+	ranges_check: 是否为Ranges Check模式?(默认为False)(当为此模式时不会下载文件， 而是探测是否此文件允许分段下载.如果允许分段下载则返回True, 不允许则为False)
+	force_download: 是否强制下载?(默认为False)(正常情况下, 下载函数检测到被下载文件不允许分段回源时, 会raise一个Exception. 如果启用此选项, 下载函数不会报错, 而是转为单线程下载(不支持temp_file)。)
+	mkfile: 是否在无法找寻到文件时创建一个新的文件?(默认为False)
+	"""
+	# 曾用名 _downloads_file_urls
+	# 实际上这应该替换的是两个多线程下载
+
+	response = requests.head(file_url)
+	logger.debug(response.headers)
+	while allow_redirect:
+
+		if 'Location' in response.headers:
+			logger.debug("Location在header中:head:\n{}".format(response.headers))
+			redirect_location = response.headers["Location"]
+
+			if "gitee" in redirect_location or "github" in redirect_location:
+				response = requests.head(redirect_location)
+				logger.info("跳转向{}".format(redirect_location))
+
+			else:
+				logger.error("错误, 跳转的链接异常.无法确认来源.")
+
+		elif 'Content-Length' in response.headers:
+			logger.debug("Content-Length在header中:head:\n{}".format(response.headers))
+
+			if "Accept-Ranges" in response.headers and response.headers["Accept-Ranges"] != "None":
+				logger.info("请求头中有有效的Accept-Ranges")
+				break
+
+			else:
+				logger.info("请求头中无有效的Accept-Ranges")
+				if force_download and not temp_file_bit:
+					logger.info("进入单线程下载")
+					ret_download = _downloads_file_url(file_url, downloads_file_fp, mkfile)
+					return ret_download
+
+				elif ranges_check:
+					return False
+
+				else:
+					if response.headers["Accept-Ranges"] == "None":
+						raise CoreBootstrapMainError("请求的文件不允许分片回源")
+
+					else:
+						raise CoreBootstrapMainError("请求的文件不支持分片回源")
+
+		else:
+			logger.debug("其他情况 {}".format(response.headers))
+			break
+
+	if allow_redirect and ranges_check:		# 如果允许重定向并且是ranges_check
+		return response.headers["Accept-Ranges"]
+
+	if not allow_redirect and "Accept-Ranges" in response.headers:		# 如果不允许重定向并且有正确的响应头
+		return response.headers["Accept-Ranges"]
+
+	elif not allow_redirect and "Accept-Ranges" not in response.headers:		# 如果没有正确的响应头
+		if force_download and not temp_file_bit:
+			ret_download = _downloads_file_url(file_url, downloads_file_fp, mkfile)
+			return ret_download
+
+		elif ranges_check:
+			return False
+
+		else:
+			raise CoreBootstrapMainError("请求的文件不支持分片回源")
+
+	filesize = int(response.headers['Content-Length'])
+	file_url = response.url
+	divisional_ranges = calc_divisional_range(filesize)		# 分下载块
+	# 创建线程池
+	with alive_bar(len(divisional_ranges), force_tty=True) as bar:
+		# max_workers = 10
+		with ThreadPoolExecutor() as p:
+			futures = []
+			logger.info("正在创建工作线程")
+			for s_pos, e_pos in divisional_ranges:
+				logger.debug("start_pos: {0}, end_pos: {1}".format(s_pos, e_pos))
+				futures.append(p.submit(range_download, s_pos, e_pos, file_url, downloads_file_fp, bar, temp_file_bit, mkfile))
+			logger.debug(futures)
+			# 等待所有任务执行完毕
+			as_completed(futures)
 
 
 def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
@@ -178,34 +388,6 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 			thread.join()
 
 # _downloads_hash_bugs已经被弃用,原因：无法正常被使用。现已经被集成进入multprocessing_task函数.此提醒将会在1个提交后删除。
-
-def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
-	"""file_url 是链接地址。downloads_file_url_src 文件地址.mkfile 传参，在没有这个文件时决定是否创建此文件（老版本）"""
-	# 新版为_downloads_file_url多线程下载
-	# 老版（改名了）(原名：_downloads_file_url）
-	#
-	# file_url 是链接地址
-	# downloads_file_url_src 文件地址
-	# mkfile 传参，在没有这个文件时决定是否创建此文件
-	# 还是单线程稳定。。。
-	downloads_file_url_response = requests.get(file_url)
-	try:
-		with open(downloads_file_url_src, mode="wb") as f:
-			f.write(downloads_file_url_response.content)
-			f.close()
-	except FileNotFoundError as e:
-		if mkfile:
-			with open(downloads_file_url_src, mode="wb+") as f:
-				f.write(downloads_file_url_response.content)
-				f.close()
-			return "OK"
-		else:
-			raise CoreBootstrapMainError(f"错误, 无法找到文件:{e}")
-
-
-class CoreBootstrapMainError(Exception):
-	def __init__(self, message):
-		super().__init__(message)
 
 
 def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要加载的文件,", PRINT_Things=None):
@@ -1886,8 +2068,8 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 	rt = r.json()
 	logger.debug("version={}".format(version_game))
 	if version_game == "":
-		logger.critical("version变量不合法,他不应该为空")
-		CoreForgeInstallError("version变量不合法,他不应该为空")
+		logger.critical("version变量不合法,它不应该为空")
+		CoreForgeInstallError("version变量不合法,它不应该为空")
 	if version_game not in rt:
 		logger.critical("{}版本不支持Forge,无法下载".format(version_game))
 		CoreForgeInstallError("此版本不支持Forge!")
@@ -1932,10 +2114,11 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 
 				logger.debug("latest-jar-hash:{}".format(forge_downloads_clint_install_hash))  # log记录jar hash值
 
-		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(
-			max(forge_build_list)))  # log记录跳转链接获取链接
+		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))  # log记录跳转链接获取链接
 
+		logger.debug("请稍后,这可能需要一段时间")
 		r = requests.get("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))
+		logger.debug("forge-install-jar下载完毕")
 
 		if not VT_bit:
 
@@ -1967,17 +2150,15 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 			if forge_install_headless_type == "FIHL_xfl03":
 				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path)))
 				logger.info("正在进行安装,这可能需要一段时间")
-				os.popen('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
+				os.system('java -cp "{0};{1}" me.xfl03.HeadlessInstaller -installClient {2}'.format(forge_install_headless_path, (os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), game_path))
 
 			elif forge_install_headless_type == "BMCLAPI":
 
 				logger.debug("执行的安装的命令:{}".format('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path)))
 				logger.info("正在进行安装,这可能需要一段时间")
-				os.popen('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path))
+				os.system('java -cp "{0};{1}" com.bangbang93.ForgeInstaller {2}'.format((os.path.join(game_path, "forge-{0}-{1}-installer.jar".format(version_game, forge_downloads_clint_install_version))), forge_install_headless_BMCLAPI, game_path))
+				return 0
 		else:
 
 			logger.error("暂不支持版本隔离模式")
 			CoreForgeInstallError("暂不支持版本隔离模式")
-
-	print(forge_versions_list)
-	print(forge_build_list)
