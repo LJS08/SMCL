@@ -11,6 +11,5 @@ jobs:
     name: Use-Nuitka PackUp
     steps:
     - name: Run
-      run: |
-      python -version
+      run: python -version
   
