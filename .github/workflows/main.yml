@@ -1,6 +1,8 @@
 name: GitHub Actions Test
 on:
-  push
+  pull_request:
+    types:
+      - if_merged
 
 jobs:
   Use-Nuitka_PackUp:
