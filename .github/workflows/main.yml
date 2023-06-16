@@ -1,0 +1,17 @@
+name: GitHub Actions Test
+on:
+  push
+
+jobs:
+  my-job:
+    name: Use-Nuitka PackUp
+    runs-on: windows-2019
+    steps:
+    - name: Run
+      env:
+        MY_VAR: Hi there! My name is
+        FIRST_NAME: Mona
+        MIDDLE_NAME: The
+        LAST_NAME: Octocat
+      run: |
+        echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME
