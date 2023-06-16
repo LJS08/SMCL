@@ -1,8 +1,9 @@
 name: GitHub Actions Test
 on:
-  pull_request:
-    types:
-      - if_merged
+  push
+  #pull_request:
+    #types:
+      #- if_merged
 
 jobs:
   Use-Nuitka_PackUp:
@@ -13,10 +14,12 @@ jobs:
       
     - name: Install Nuitka
       run: |
-        python -m pip install nuitka
+        python -m import multiprocessing cpu_num = multiprocessing.cpu_count() print(cpu_num)
+# python -m pip install nuitka
         
     - name: Pack
       run: |
         cd formal
-        nuitka main.py
+        python -m import multiprocessing cpu_num = multiprocessing.cpu_count() print(cpu_num)
+# nuitka --onefile --mingw64 --jobs=5000 --windows-icon-from-ico=./smcl-t.ico -o SMCL-0.0.1.exe --windows-product-name=SMCL --windows-file-version=0.0.0.1 --windows-company-name=SMCL --windows-product-version=0.0.0.1 --windows-file-description=SMCL --include-data-dir=imgs=image --include-data-dir=grapheme=grapheme --plugin-enable=tk-inter --output-dir=o __main__.py
   
