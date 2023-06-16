@@ -13,5 +13,5 @@ jobs:
         MIDDLE_NAME: The
         LAST_NAME: Octocat
       run: |
-        echo %APPDATA%
+        python --version
   
