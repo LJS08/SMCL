@@ -6,7 +6,9 @@ jobs:
   runs-on: windows-2019
   job1:
     name: Install Nuitka
-    
+    steps:
+    - name: Run
+      run: echo "Hello-World"
     
     name: Use-Nuitka PackUp
     steps:
