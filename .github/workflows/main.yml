@@ -4,7 +4,7 @@ on:
 
 jobs:
   Use-Nuitka_PackUp:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
     - name: Print a greeting
       env:
