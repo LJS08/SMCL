@@ -20,8 +20,7 @@ jobs:
     - name: Pack
       run: |
         cd formal
-        python -c import multiprocessing 
-        python -c cpu_num = multiprocessing.cpu_count()
-        python -c print(cpu_num)
+        python import multiprocessing 
+        python multiprocessing.cpu_count()
 # nuitka --onefile --mingw64 --jobs=5000 --windows-icon-from-ico=./smcl-t.ico -o SMCL-0.0.1.exe --windows-product-name=SMCL --windows-file-version=0.0.0.1 --windows-company-name=SMCL --windows-product-version=0.0.0.1 --windows-file-description=SMCL --include-data-dir=imgs=image --include-data-dir=grapheme=grapheme --plugin-enable=tk-inter --output-dir=o __main__.py
   
