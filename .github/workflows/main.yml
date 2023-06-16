@@ -1,6 +1,6 @@
 name: GitHub Actions Test
 on:
-  pull_request
+  push
 
 jobs:
   Use-Nuitka_PackUp:
