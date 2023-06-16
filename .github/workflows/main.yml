@@ -14,13 +14,12 @@ jobs:
       
     - name: Install Nuitka
       run: |
+        python cpu_c.py
 # python -m import multiprocessing cpu_num = multiprocessing.cpu_count() print(cpu_num)
 # python -m pip install nuitka
         
     - name: Pack
       run: |
         cd formal
-        python import multiprocessing 
-        python multiprocessing.cpu_count()
 # nuitka --onefile --mingw64 --jobs=5000 --windows-icon-from-ico=./smcl-t.ico -o SMCL-0.0.1.exe --windows-product-name=SMCL --windows-file-version=0.0.0.1 --windows-company-name=SMCL --windows-product-version=0.0.0.1 --windows-file-description=SMCL --include-data-dir=imgs=image --include-data-dir=grapheme=grapheme --plugin-enable=tk-inter --output-dir=o __main__.py
   
