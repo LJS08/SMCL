@@ -13,5 +13,6 @@ jobs:
         MIDDLE_NAME: The
         LAST_NAME: Octocat
       run: |
-        python --version
+        python -m pip install nuitka
+        dir
   
