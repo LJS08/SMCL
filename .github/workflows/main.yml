@@ -3,15 +3,15 @@ on:
   push
 
 jobs:
-  runs-on: windows-2019
-  job1:
-    name: Install Nuitka
+  Use-Nuitka_PackUp:
+    runs-on: ubuntu-latest
     steps:
-    - name: Run
-      run: echo "Hello-World"
-    
-    name: Use-Nuitka PackUp
-    steps:
-    - name: Run
-      run: echo "HelloWorld"
+    - name: Print a greeting
+      env:
+        MY_VAR: Hi there! My name is
+        FIRST_NAME: Mona
+        MIDDLE_NAME: The
+        LAST_NAME: Octocat
+      run: |
+        echo $MY_VAR $FIRST_NAME $MIDDLE_NAME $LAST_NAME.
   
