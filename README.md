@@ -3,6 +3,29 @@
 ### 介绍
  _**SMCL开发中**_ 
 
+## Depencies
+
+| Depency                | Usage                              | Source                                                                    |  
+|------------------------|------------------------------------|---------------------------------------------------------------------------|  
+| alive_progress         | Show progress                      | Python 3.9                                                                |  
+| platform, sys          | Geting system informations         | Python 3.9                                                                |  
+| subprocess             | Executing commands                 | Python 3.9                                                                |  
+| concurrent, threading  | Multi-threading capabilities       | Python 3.9                                                                |  
+| requests               | Downloading files & Executing APIs | Python 3.9                                                                |
+| sqlite3                | Feature                            | Python 3.9                                                                |
+| selenium               | Login Account                      | Python 3.9                                                                |
+| tempfile               | Enhancement Download               | Python 3.9                                                                |
+| time                   | Get Local Time&&Sleep Theard       | Python 3.9                                                                |
+| uuid                   | New a uuid                         | Python 3.9                                                                |
+| winreg                 | Get the browser src                | Python 3.9                                                                |
+| xml,xmlrpc             | Parse xml                          | Python 3.9                                                                |
+| zipfile                | Decompression zip flies            | Python 3.9                                                                |
+| hashlib                | Check Hash                         | Python 3.9                                                                |
+| loguru                 | logging                            | Python 3.9                                                                |
+| json                   | JSON dumping&writing               | Python 3.9                                                                |  
+| Core                   | Core                               | SMCL                                                                      |  
+| tkinter                | GUI                                | Python 3.9                                                                |  
+
 ### 平台支持
 
 |CPU 架构\操作系统|视窗|Linux|MacOS（X）|
