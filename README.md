@@ -24,7 +24,7 @@
 | loguru                 | logging                            | Python 3.9                                                                |
 | json                   | JSON dumping&writing               | Python 3.9                                                                |  
 | Core                   | Core                               | SMCL                                                                      |  
-| tkinter                | GUI                                | Python 3.9                                                                |  
+| tkinter,wxPython       | GUI                                | Python 3.9                                                                |  
 
 ### 平台支持
 
