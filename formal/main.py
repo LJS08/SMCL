@@ -2,6 +2,7 @@ import View.main
 from Core.mkdir import *
 from loguru import logger
 import Core.config
+import sys
 
 logger.add('log/smcl_{time}.log', rotation="50 MB", compression='zip', encoding='utf-8')
 
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     Core.config.write(dotmc = game_dir)
     
     if "-dev-console" in sys.argv:
-    import Console.console_main
+        import Console.console_main
         Console.console_main.Consoles()
         console_check = True
     

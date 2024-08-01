@@ -65,7 +65,7 @@ def main_page(base_img_src):
                             activebackground="#CADFF2", bd=0, height=56, width=120,
                             font=("simhei", 14,), command=set_init, compound="top")
 
-    version = ttk.Combobox(window)
+    version = ttk.Combobox(window, state="readonly")
     config = Core.config.read()
     try:
         version["values"] = os.listdir(config[".mc"] + "\\versions")
@@ -74,15 +74,15 @@ def main_page(base_img_src):
         version.insert(0, "No game found. Download one and restart the launcher.")
 
     def refresh_data():
-        version = ttk.Combobox(window)
         config = Core.config.read()
-        try:
-            version["values"] = os.listdir(config[".mc"] + "\\versions")
-            version.insert(0, os.listdir(config[".mc"] + "\\versions")[0])
-        except:
-            version.insert(0, "No game found. Download one and restart the launcher.")
-        version.place(x=0, y=60, width=120)
-        window.after(600, refresh_data)   # 这里的10000的单位为毫秒
+        if not list(version["values"]) == os.listdir(config[".mc"] + "\\versions"):
+            try:
+                version["values"] = os.listdir(config[".mc"] + "\\versions")
+                version.insert(0, os.listdir(config[".mc"] + "\\versions")[0])
+            except:
+                version.insert(0, "No game found. Download one and restart the launcher.")
+            version.place(x=0, y=60, width=120)
+        window.after(200, refresh_data)   # 这里的10000的单位为毫秒
 
     # backdrop
     bg.pack()
