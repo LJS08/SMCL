@@ -1,0 +1,13 @@
+# cache
+__pycache__/
+
+.vscode/
+/test
+.minecraft/
+
+# logs
+log/
+logs/
+
+# config file
+config.*
