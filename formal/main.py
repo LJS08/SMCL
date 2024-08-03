@@ -18,6 +18,7 @@ if __name__ == "__main__":
         import Console.console_main
         Console.console_main.Consoles()
         console_check = True
+        print("正在启动,请稍后")
     
     if not console_check:
         View.main.main_page(os.path.dirname(__file__))
