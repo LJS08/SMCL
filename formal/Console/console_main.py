@@ -1,18 +1,5 @@
-print("正在启动,请稍后")
 import platform
 import os
-
-
-def clear_screen():
-    try:
-        if platform.system() == "Windows":
-            os.system("cls")
-        else:
-            os.system("clear")
-    except Exception:
-        print("不支持os库?清屏执行错误")
-
-
 import webbrowser
 from rich.console import Console
 import time
@@ -26,35 +13,49 @@ import json
 from rich.table import Table
 import sys
 
+
+def clear_screen():
+    try:
+        if platform.system() == "Windows":
+            os.system("cls")
+        else:
+            os.system("clear")
+    except Exception:
+        print("不支持os库?清屏执行错误")
+
+
 clear_screen()
 logger.add('log/Consoles_{time}.log', rotation="5 MB", compression='zip', encoding='utf-8', retention='180 days', enqueue=True)
 
 running_src = os.getcwd()
 
-if os.path.exists(os.path.join(running_src, ".minecraft")):     # 如果 .minecraft 存在的话
-    game_dir = os.path.join(running_src, ".minecraft")      # 如果 .minecraft 存在的话,则默认为游戏文件夹
-else:       # 如果 .minecraft 不存在的话
+if os.path.exists(os.path.join(running_src, ".minecraft")):  # 如果 .minecraft 存在的话
+    game_dir = os.path.join(running_src, ".minecraft")  # 如果 .minecraft 存在的话,则默认为游戏文件夹
+
+else:  # 如果 .minecraft 不存在的话
     game_dir = None
-    
+
 java_path = "java"
 minecraft_user_dict_list = []
+minecraft_user_dict = {}
 launcher_name_version = "Dev-Consoles 0.0.1"
 
 mod_list = []
 author_list = []
 self_set_status_key = False
-status_key  = ">"       # 默认的提示符样式
+status_key = ">"  # 默认的提示符样式
+a_s_bit = False
 
 help_page = '''
 [bold gold1]帮助[/]
-[bold bright_blue]输入help或0查看本帮助[/]
+[bold bright_blue]输入 help 或 0 查看本帮助[/]
 [bright_white]你也可以输入序号进行搜索[/]
-[bright_white]1.输入exit退出[/]
-[bright_white]2.输入Mod Search进行mod搜索[/]
-[bright_white]3.输入init初始化启动器[/]
-[bright_white]4.输入launch启动游戏[/]
-[bright_white]5.输入downloads_minecraft下载游戏[/]
-[bright_white]6.输入Settings进入设置页面[/]
+[bright_white]1.输入 exit 退出[/]
+[bright_white]2.输入 Mod Search 进行mod搜索[/]
+[bright_white]3.输入 init 初始化启动器[/]
+[bright_white]4.输入 launch 启动游戏[/]
+[bright_white]5.输入 downloads_minecraft 下载游戏[/]
+[bright_white]6.输入 Settings 进入设置页面[/]
 '''
 
 mod_search_page = '''
@@ -91,12 +92,14 @@ settings_page_str = '''
 [bright_white]3.输入show_MS_user_accesstoken_r_t显示所有正版用户的AccessToken和RefreshToken列表[/]
 [bright_white]4.输入add_offline_user添加离线用户[/]
 [bright_white]5.输入add_online_user添加正版用户[/]
+[bright_white]6.输入select_user选择用户[/]
 '''
+
 
 class ConsolesLaunchError(Exception):
     def __init__(self, message):
         super().__init__(message)
-        
+
 
 def get_dir_name(dir_get):
     dirs_list = os.listdir(dir_get)
@@ -106,7 +109,7 @@ def get_dir_name(dir_get):
     return dirs_list
 
 
-def while_input_verified(color_obj,color_name, verified_str):
+def while_input_verified(color_obj, color_name, verified_str):
     global status_key
     xhkz = True
     while xhkz:
@@ -120,24 +123,24 @@ def while_input_verified(color_obj,color_name, verified_str):
             return False
         else:
             color_obj.print("不正确的输入", style="bold bright_red")
-    
+
 
 def Consoles():
     color = Console(color_system='auto', style=None)
 
     def mod_search():
         global author_list
-    
+
         color.print(Panel("{}".format(mod_search_page)))
 
         ret_about = Core.ModDownload.CurseForge_Task.about()
         print("Version:{0}.{1}.Build by {2}.".format(ret_about["ver"], ret_about["PF"], ret_about["Copyright"]))
-    
+
         mod_name_input = input(">")
-    
+
         if mod_name_input != "back":
             with color.status("[red]Working...[/]"):
-            
+
                 ret = Core.ModDownload.CurseForge_Task.mod_search(mod_name_input)
                 mod_name_list = []
                 for item in ret["data"]:
@@ -149,7 +152,7 @@ def Consoles():
                         mod_authors_str = mod_authors_str + item_authors["name"] + " "
 
                     author_list.append(mod_authors_str)
-    
+
                 table = Table()
                 table.add_column('[red] Mod Name')
                 table.add_column('[red] Authors')
@@ -164,7 +167,7 @@ def Consoles():
         color.print(Panel(init_page_str))
         global status_key
         global game_dir
-        
+
         init_p_cil_input = input(status_key)
         if init_p_cil_input == "1" or init_p_cil_input == "minecraft_dir":
             init_p_f = Core.mkdir.Files()
@@ -177,20 +180,20 @@ def Consoles():
                     color.print("[green]取消操作[/]")
                     return -1
                 logger.info("覆盖了配置文件")
-                    
+
             if game_dir is None:
                 color.print("[bright_red]创建Save_Json失败.请先设置或初始化文件夹[/]")
-                looger.error("创建Save_Json失败.请先设置或初始化文件夹")
+                logger.error("创建Save_Json失败.请先设置或初始化文件夹")
             else:
                 Core.config.write(dotmc = game_dir)
                 color.print("[green]操作完成.Save_Json创建完毕[/]")
                 logger.info("操作完成.Save_Json创建完毕")
-        
+
     def advanced_settings_page():
         global a_s_bit
         global status_key
         global self_set_status_key
-        
+
         color.print("输入1给提示符后添加/去除空格", style="bright_white")
         color.print("输入0返回", style="bright_white")
         a_s_p_c_input = input("Advanced Settings{}".format(status_key))
@@ -209,13 +212,14 @@ def Consoles():
         global java_path
         global game_dir
         global launcher_name_version
+        global minecraft_user_dict
 
         global status_key
         with color.status("[red]Working...[/]"):
             if game_dir is None:
                 color.print("[bright_red]启动游戏失败.请先设置或初始化文件夹[/]")
-                raise ConsolesLaunchError("启动游戏失败.没有.minecrafft文件夹")
-                 
+                raise ConsolesLaunchError("启动游戏失败.没有.minecraft文件夹")
+
             ret = get_dir_name(os.path.join(game_dir, "versions"))
             if len(ret) == 0:
                 color.print("[bright_red]启动游戏失败:没有可用的游戏[/]")
@@ -252,33 +256,45 @@ def Consoles():
                 int_l_p_cil_input = None
 
             if int_l_p_cil_input in launch_version_ser_num_list or l_p_cil_input in launch_version_list:        # 如果l_p_cil_input在launch_version_ser_num_list或launch_version_list中
-                    
+
                 if int(l_p_cil_input) in launch_version_ser_num_list:        # 如果输入的是序号,那么:
                     launch_version_name = launch_version_list[int(l_p_cil_input)]
                 else:       # 如果输入的是版本号
                     launch_version_name = l_p_cil_input     # 直接将版本号给lauch_version_name
-                        
+
+                minecraft_username = minecraft_user_dict["username"]
+                launch_minecraft_uuid_yn = minecraft_user_dict["launch_minecraft_uuid_yn"]
+                minecraft_uuid_val = minecraft_user_dict["uuid"]
+                minecraft_aT = minecraft_user_dict["access_token"]
+                if minecraft_aT is None:
+                    minecraft_aT = "None"
+
                 color.print("[bright_blue]准备启动.游戏版本为:{}[/]".format(launch_version_name))
                 ret_lauch = Core.core_start.core_start_IN(java_path, game_dir, launch_version_name, minecraft_username, minecraft_uuid_val, minecraft_aT, launcher_name_version, launch_minecraft_uuid_yn)
                 if not launch_minecraft_uuid_yn:
                     minecraft_uuid_val = ret_lauch[2]
                     color.print("[bright_blue]您的临时UUID为:{}[/]".format(minecraft_uuid_val))
                     launch_minecraft_uuid_yn = True
+                    minecraft_user_dict["launch_minecraft_uuid_yn"] = launch_minecraft_uuid_yn
+                    for item in minecraft_user_dict_list:
+                        if item["username"] == minecraft_username:
+                            item["uuid"] = minecraft_uuid_val
+                            item["launch_minecraft_uuid_yn"] = launch_minecraft_uuid_yn
 
             elif l_p_cil_input == "help":
                 color.print(launch_page_str)
                 color.print("[bright_blue]可用的游戏版本[/]")
                 color.print(table)
-                
+
             elif l_p_cil_input == "back":
                 return 0
-            
+
             else:
                 color.print("[bold bright_red]不正确的输入,请重试.[/]")
                 color.print(launch_page_str)
                 color.print("[bright_blue]可用的游戏版本[/]")
                 color.print(table)
-            
+
     def downloads_minecraft_page():
         global game_dir
         with color.status("[red]请稍后...[/]"):
@@ -478,6 +494,53 @@ def Consoles():
             elif set_p_input == "5" or set_p_input == "add_online_user":
                 MS_login_page()
 
+            elif set_p_input == "6" or set_p_input == "select_user" or set_p_input == "sel":
+                global minecraft_user_dict
+                if len(minecraft_user_dict_list) != 0:
+                    with color.status("[bright_blue]请稍后...[/]"):
+
+                        table = Table()
+                        table.add_column('[gold1] 序号')
+                        table.add_column('[bright_blue] 用户名')
+                        table.add_column('[bright_blue] 是否为正版账号')
+                        table.add_column('[bright_blue] uuid')
+                        table.add_column('[bright_yellow] Access_Token')
+                        table.add_column('[bright_yellow] Refresh_Token')
+
+                        set_p_userlist_i = 0
+                        for item in minecraft_user_dict_list:
+                            if item["minecraft_MS_Login_bit"]:
+                                MS_or_offline_Login_bit_str = "正版账户"
+                                AT_str_on_str = "******"
+                                R_T_str_on_str = "******"
+                            else:
+                                MS_or_offline_Login_bit_str = "离线账户"
+                                AT_str_on_str = "离线账户,无AccessToken"
+                                R_T_str_on_str = "离线账户,无Refresh_Token"
+
+                            table.add_row(str(set_p_userlist_i), item["username"], MS_or_offline_Login_bit_str,
+                                          item["uuid"], AT_str_on_str, R_T_str_on_str)
+                            set_p_userlist_i += 1
+
+                    color.print(table)
+                    while True:
+                        color.print("[bright_blue]请输入用户名[/]", end="")
+                        minecraft_username = input("{}".format(status_key))
+                        minecraft_user_sel = False
+                        for item in minecraft_user_dict_list:
+                            if item["username"] == minecraft_username:
+                                minecraft_user_dict = item
+                                minecraft_user_sel = True
+                                break
+                        if minecraft_user_sel:
+                            color.print("[bright_green]选择账户完成:[/][bright_white]用户名为:[/][gold1]{}[/]".format(minecraft_username))
+                            break
+                        else:
+                            color.print("[bold bright_red]选择账户失败,未找到此账户.[/]")
+
+                else:
+                    color.print("[bold bright_red]您没有登录任何账户,请先添加账户.[/]")
+
             elif set_p_input == "0" or set_p_input == "help":
                 color.print(settings_page_str)
 
@@ -543,7 +606,7 @@ def Consoles():
                 color.print("[bright_blue]准备安装Forge.游戏版本为:{}[/]".format(launch_version_name))
                 try:
                     ret_install_Forge = Core.core_start.core_Forge_install_clint(launch_version_name, game_dir, False, "latest")
-                except CoreForgeInstallError as CFIE:
+                except Core.core_start.CoreForgeInstallError as CFIE:
                     logger.error(f"{CFIE}")
                     raise ConsolesLaunchError(f"{CFIE}")
 
@@ -564,7 +627,7 @@ def Consoles():
                 color.print("[bright_blue]可用的游戏版本[/]")
                 color.print(table)
 
-    def net_page():
+    def net_page(n_p_cil_input):
         if "net" in n_p_cil_input:
             print(n_p_cil_input[4:])
 
@@ -576,7 +639,7 @@ def Consoles():
     while True:
         global status_key
         global a_s_bit
-        
+
         cil_input = input(status_key)
         if cil_input == "exit" or cil_input == "1":
             sys.exit()
@@ -615,15 +678,9 @@ def Consoles():
 
         elif cil_input == "advanced_settings" or cil_input == "高级设置ver001":
             advanced_settings_page()
-        
+
         elif cil_input == "net" and a_s_bit:
-            net_page()
+            net_page(cil_input)
 
         else:
             color.print("[bold red]指令不正确,输入help查看帮助页面[/]")
-
-# color.print(Panel('[blue]This is a panel[/]'))
-# color.print(Panel("[bold yellow]Hi, I'm a Panel", border_style="red"))
-
-# color.print_json(json.dumps(ret))
-
