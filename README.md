@@ -2,6 +2,8 @@
 
 ### 介绍
  _**SMCL开发中**_ 
+ 
+SMCL 是一款 Minecraft 启动器.
 
 ## Depencies
 
@@ -44,6 +46,37 @@
 ❌ - 不支持
 
 目前SMCL仍在开发中, 敬请期待。
+
+### 项目结构
+
+#### 文件夹
+
+formal : 由于历史原因, 该目录中存放源代码文件
+
+(注意, 以下以 formal 为根文件夹进行说明)
+
+/Console : CUI(命令行UI相关)
+
+/Core : 核心包, 大部分功能的实现在其中
+
+/Update : 与自动更新有关, 目前未完成
+
+/View : SMCL 的 UI
+
+/image : 绝大多数UI的图片和依赖的背景图
+
+/tools : 由于历史原因, 有少量的功能实现在该包中
+
+#### 文件
+
+main.py : 程序运行的起点, 入口点.
+
+/Console/console_main.py : 整个CUI
+
+/Core/core_start.py : 大部分的功能实现, Core 的始与终.
+
+/Core/constant.py : "常量"的实现
+
 ### 语言
   _Python_ 
 
