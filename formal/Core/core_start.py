@@ -1,6 +1,6 @@
 # Copyright © 2022-2023 LJS80 All Rights Reserved
 from alive_progress import alive_bar
-import Core.constant as const  # 常量定义用
+from . import constant as const  # 常量定义用
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import importlib
@@ -32,6 +32,8 @@ logger.add('log/core_start_{time}.log', rotation="50 MB", compression='zip', enc
 lock = threading.Lock()  # 初始化锁
 
 # headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36"}
+core_start_version = "0.0.1"
+header_smcl = {f"User-Agent": "SMCL/{core_start_version}"}
 
 
 class _CheckVersionError(Exception):
@@ -74,7 +76,7 @@ def _downloads_file_url(file_url, downloads_file_url_src, mkfile):
 	# downloads_file_url_src 文件地址
 	# mkfile 传参，在没有这个文件时决定是否创建此文件
 	# 还是单线程稳定。。。
-	downloads_file_url_response = requests.get(file_url)
+	downloads_file_url_response = requests.get(file_url, headers=header_smcl)
 	try:
 		with open(downloads_file_url_src, mode="wb") as f:
 			f.write(downloads_file_url_response.content)
@@ -114,7 +116,7 @@ def calc_divisional_range(file_size: int, chuck=10) -> list:
 def range_download_old(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 	"""被弃用,4个提交后添加崩溃报告"""
 	# 被弃用
-	headers = {"Range": f"bytes={s_pos}-{e_pos}"}
+	headers = {"Range": f"bytes={s_pos}-{e_pos}", f"User-Agent": "SMCL/{core_start_version}"}
 	res = requests.get(url, headers=headers, stream=True)
 	try:
 		with open(downloads_file_url_src, mode="rb") as f:
@@ -138,7 +140,7 @@ def range_download_old(downloads_file_url_src, s_pos, e_pos, url, mkfile):
 
 def range_download(start, end, file_url, downloads_file_fp, bar, temp_file_bit, mkfile):
 	headers = {
-		'Range': f'bytes={start}-{end}',
+		'Range': f'bytes={start}-{end}', f"User-Agent": "SMCL/{core_start_version}",
 	}
 	# 传递头，表明分段下载
 	pos = start  # 文件指针就等于（pos）开始（start)
@@ -390,7 +392,7 @@ def _downloads_file_url_threading(file_url, downloads_file_url_src, mkfile):
 # _downloads_hash_bugs已经被弃用,原因：无法正常被使用。现已经被集成进入multprocessing_task函数.此提醒将会在1个提交后删除。
 
 
-def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要加载的文件,", PRINT_Things=None):
+def _read_json_file(read_json_file_src, ERROR_MSG="错误: 无法找到需要加载的文件,", PRINT_MSG=None):
 	try:
 		with open(read_json_file_src, mode='r', encoding="gbk") as f:
 			data = f.read(-1)
@@ -399,8 +401,8 @@ def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要
 		return read_json_file_json
 
 	except FileNotFoundError as e:
-		print("{}".format(PRINT_Things))
-		raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things, e))
+		print("{}".format(PRINT_MSG))
+		raise CoreBootstrapMainError("{0}{1}".format(ERROR_MSG, e))
 
 	except UnicodeDecodeError:
 		try:
@@ -409,11 +411,11 @@ def _read_json_file(read_json_file_src, ERROR_Things="错误: 无法找到需要
 				read_json_file_json = json.loads(data)
 				f.close()
 		except FileNotFoundError as e:
-			print("{}".format(PRINT_Things))
-			raise CoreBootstrapMainError("{0}{1}".format(ERROR_Things, e))  # 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
+			print("{}".format(PRINT_MSG))
+			raise CoreBootstrapMainError("{0}{1}".format(ERROR_MSG, e))  # 这里估计用不到，前面都已经有侦测到编码错误应该是有文件了。但保险起见，还是加上吧
 
 		except UnicodeDecodeError as UDE:
-			print("{}".format(PRINT_Things))
+			print("{}".format(PRINT_MSG))
 			print("编码错误{}".format(UDE))
 
 
@@ -735,7 +737,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 						hash_yn = 1  # 如果hash正确就跳出循环
 					else:
 						os.chdir(assets_index_path)  # 到达应该下载的目录
-						response = requests.get(assets_Index_download_url)  # 下载
+						response = requests.get(assets_Index_download_url, headers=header_smcl)  # 下载
 						with open(assets_Index_id + ".json", mode="wb+") as f:  # 写入
 							f.write(response.content)
 							f.close()
@@ -744,7 +746,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 
 		else:  # 1.12.json不存在的情况
 			os.chdir(assets_index_path)
-			response = requests.get(assets_Index_download_url)
+			response = requests.get(assets_Index_download_url, headers=header_smcl)
 			with open(assets_Index_id + ".json", mode="wb+") as f:
 				f.write(response.content)
 				f.close()
@@ -760,7 +762,7 @@ def core_bootstrap_main(selfup, mc_path, jar_version, link_type):
 					hash_yn = 1
 				else:
 					os.chdir(assets_index_path)
-					response = requests.get(assets_Index_download_url)
+					response = requests.get(assets_Index_download_url, headers=header_smcl)
 					with open(assets_Index_id + ".json", mode="wb+") as f:
 						f.write(response.content)
 						f.close()
@@ -1982,10 +1984,10 @@ SVONLY: You don't need to care about it.It's useless to you.
 	else:
 		link_get_version_list = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
 
-	r = requests.get(link_get_version_list)
+	r = requests.get(link_get_version_list, headers=header_smcl)
 	if link_type == "Latest" and link_get_version_list == "https://bmclapi2.bangbang93.com/mc/game/version_manifest_v2.json":
 		# 判断bmclapi是不是最新的(默认mojang的是最新的)
-		r2 = requests.get("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")
+		r2 = requests.get("https://launchermeta.mojang.com/mc/game/version_manifest_v2.json", headers=header_smcl)
 		r_hash = _hash_get_val(r.text, "sha1", "str")
 		r2_hash = _hash_get_val(r2.text, "sha1", "str")
 		if not r2_hash == r_hash:
@@ -2040,10 +2042,10 @@ def core_Forge_install_clint_version_Get(version=None, type="All"):
 	type=versions时返回此版本Forge所有可用版本号
 	如果version不填或为None那么返回支持Forge的列表
 	"""
-	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
+	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft", headers=header_smcl)
 	rt = r.json()
 
-	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version))
+	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version), headers=header_smcl)
 	Forge_version_list = r_Forge_version_list.json()
 	forge_build_list = []
 	forge_versions_list = []
@@ -2064,7 +2066,7 @@ def core_Forge_install_clint_version_Get(version=None, type="All"):
 
 def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge_install_headless_type = "BMCLAPI"):
 	# 未完成
-	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft")
+	r = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft", headers=header_smcl)
 	rt = r.json()
 	logger.debug("version={}".format(version_game))
 	if version_game == "":
@@ -2086,7 +2088,7 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 	forge_install_headless_BMCLAPI = const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH  # 指向const.FORGE_INSTALL_HEADLESS_BMCLAPI_PATH的指针(伪)
 	running_path = const.RUNNING_PATH  # 指向const.RUNNING_PATH的指针(伪)
 
-	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game))
+	r_Forge_version_list = requests.get("https://bmclapi2.bangbang93.com/forge/minecraft/{}".format(version_game), headers=header_smcl)
 	Forge_version_list = r_Forge_version_list.json()
 	print(Forge_version_list)
 	forge_build_list = []
@@ -2117,7 +2119,7 @@ def core_Forge_install_clint(version_game, mc_path, VT_bit, version_forge, forge
 		logger.debug("下载链接获取构造: https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))  # log记录跳转链接获取链接
 
 		logger.debug("请稍后,这可能需要一段时间")
-		r = requests.get("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)))
+		r = requests.get("https://bmclapi2.bangbang93.com/forge/download/{}".format(max(forge_build_list)), headers=header_smcl)
 		logger.debug("forge-install-jar下载完毕")
 
 		if not VT_bit:
