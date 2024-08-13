@@ -1,0 +1,5 @@
+requests~=2.28.1
+selenium~=4.23.1
+alive-progress~=3.1.5
+loguru~=0.7.2
+wxPython~=4.2.1
